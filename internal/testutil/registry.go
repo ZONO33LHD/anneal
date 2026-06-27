@@ -5,10 +5,10 @@ import (
 	"github.com/ZONO33LHD/anneal/registry"
 )
 
-// NewRegistry builds an all-mock, in-memory registry for tests.
+// NewRegistry はテスト用に、すべてモックでインメモリな registry を構築します。
 func NewRegistry() *registry.Registry {
 	return registry.New(&config.Config{
-		StorePath:         "", // in-memory
+		StorePath:         "", // インメモリ
 		ImproveWindow:     5,
 		LowScoreThreshold: 90,
 		ForceMock:         true,

@@ -1,4 +1,4 @@
-// Command anneal is the CLI for the self-improving dependency update agent.
+// Command anneal は自己改善型の依存関係更新エージェントの CLI です。
 package main
 
 import (
@@ -151,9 +151,9 @@ func cmdStatus() error {
 	return nil
 }
 
-// runDemo copies the fixture to an isolated working dir and runs the whole mock
-// pipeline: detection → PR → CI self-heal → scoring → Annealing Loop. It uses a
-// raised low-score threshold so the loop reliably fires.
+// runDemo は fixture を隔離された作業ディレクトリにコピーし、モックのパイプライン全体を
+// 実行します: detection → PR → CI self-heal → scoring → Annealing Loop。ループが確実に
+// 発火するように、引き上げた low-score しきい値を使用します。
 func runDemo() error {
 	work, _ := filepath.Abs(".anneal/work/sample-repo")
 	storePath, _ := filepath.Abs(".anneal/demo-store.json")
@@ -166,7 +166,7 @@ func runDemo() error {
 	cfg := &config.Config{
 		StorePath:         storePath,
 		ImproveWindow:     policy.DefaultImproveWindow,
-		LowScoreThreshold: 90, // ensure the Annealing Loop has material
+		LowScoreThreshold: 90, // Annealing Loop が処理対象を確実に持てるようにする
 		GeminiModel:       "gemini-2.5-flash-lite",
 		ForceMock:         true,
 		Verbose:           true,
@@ -202,7 +202,7 @@ func runDemo() error {
 	return nil
 }
 
-// packageOf extracts the package segment from "repo::package::version".
+// packageOf は "repo::package::version" から package のセグメントを抽出します。
 func packageOf(key string) string {
 	first := -1
 	for i := 0; i+1 < len(key); i++ {
