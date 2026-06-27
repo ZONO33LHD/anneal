@@ -29,7 +29,7 @@ func (GoMod) Scan(repoPath string) ([]gateway.Dependency, error) {
 	}
 	var out []gateway.Dependency
 	inBlock := false
-	for _, line := range strings.Split(string(data), "\n") {
+	for line := range strings.SplitSeq(string(data), "\n") {
 		trimmed := strings.TrimSpace(line)
 		switch {
 		case strings.HasPrefix(trimmed, "require ("):
