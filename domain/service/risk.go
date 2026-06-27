@@ -2,8 +2,8 @@ package service
 
 import "github.com/ZONO33LHD/anneal/domain/model"
 
-// DeriveRisk maps update kind + usage breadth to a risk level. The rule-based
-// decision (not the LLM) is the source of truth for risk.
+// DeriveRisk は更新の種類と利用の広がりをリスクレベルへマッピングする。リスクの
+// 真の拠り所は（LLM ではなく）ルールベースの判断である。
 func DeriveRisk(updateType model.UpdateType, sites int, breaking bool) model.RiskLevel {
 	if breaking || updateType == model.Major {
 		return model.RiskHigh
@@ -20,8 +20,8 @@ func DeriveRisk(updateType model.UpdateType, sites int, breaking bool) model.Ris
 	return model.RiskLow
 }
 
-// DeriveConfidence estimates how trustworthy the automated analysis is: high for
-// small patches, low for majors and widely-used minors.
+// DeriveConfidence は自動解析がどれだけ信頼できるかを見積もる。小さな patch では
+// 高く、major や広く使われている minor では低くなる。
 func DeriveConfidence(updateType model.UpdateType, sites int) float64 {
 	switch updateType {
 	case model.Patch:

@@ -12,9 +12,8 @@ type failureRule struct {
 	patterns []*regexp.Regexp
 }
 
-// Keyword rules for the failure categories, checked in order. Deterministic so
-// the fix/no-fix decision is predictable; the human-readable summary is added by
-// the usecase via the LLM.
+// 失敗カテゴリ向けのキーワードルール。順番に評価される。修正可否の判断が予測可能と
+// なるよう決定的にしてあり、人間が読めるサマリは usecase が LLM 経由で付加する。
 var failureRules = []failureRule{
 	{model.FailDependencyConflict, true, compile(`(?i)peer dep`, `ERESOLVE`, `(?i)version conflict`, `(?i)incompatible`)},
 	{model.FailAPIBreaking, false, compile(`(?i)is not a function`, `(?i)has no exported member`, `(?i)breaking`, `(?i)signature`)},
@@ -30,8 +29,8 @@ func compile(pats ...string) []*regexp.Regexp {
 	return out
 }
 
-// ClassifyCIFailure maps a CI log summary to a category and whether Anneal can
-// mechanically fix it.
+// ClassifyCIFailure は CI ログのサマリをカテゴリと、Anneal が機械的に修正できるか
+// どうかへとマッピングする。
 func ClassifyCIFailure(logSummary string) (model.CIFailureCategory, bool) {
 	for _, rule := range failureRules {
 		for _, p := range rule.patterns {

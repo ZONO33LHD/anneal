@@ -1,15 +1,15 @@
-// Package service holds pure domain logic with no I/O: classification, the
-// approval decision, risk derivation, CI-failure rules, and scoring.
+// Package service は I/O を持たない純粋なドメインロジックを保持する。すなわち分類、
+// 承認判断、リスク導出、CI 失敗ルール、スコアリングである。
 package service
 
 import "github.com/ZONO33LHD/anneal/domain/model"
 
-// ClassifyPriority assigns triage urgency:
+// ClassifyPriority はトリアージの緊急度を割り当てる:
 //
-//	critical: exploitable CVE / exploit published
-//	high:     any other advisory
-//	medium:   ordinary patch / minor
-//	low:      dev-only, or major with breaking-change concern
+//	critical: 悪用可能な CVE / 公開済みのエクスプロイト
+//	high:     その他のアドバイザリ
+//	medium:   通常の patch / minor
+//	low:      dev 専用、または破壊的変更の懸念がある major
 func ClassifyPriority(updateType model.UpdateType, isDev bool, cve *model.CVEInfo) model.Priority {
 	if cve != nil {
 		if cve.Severity == "critical" || cve.ExploitAvailable {
@@ -21,7 +21,7 @@ func ClassifyPriority(updateType model.UpdateType, isDev bool, cve *model.CVEInf
 		return model.PriorityLow
 	}
 	if updateType == model.Major {
-		return model.PriorityLow // defer; breaking-change risk
+		return model.PriorityLow // 先送り。破壊的変更のリスクがある
 	}
 	return model.PriorityMedium
 }

@@ -1,6 +1,6 @@
-// Package gateway declares the ports to external systems and adapters (LLM, git
-// host, notifications, package metadata, source manifests, logging).
-// Implementations live in infrastructure.
+// Package gateway は外部システムやアダプタ（LLM、git ホスト、通知、パッケージ
+// メタデータ、ソースマニフェスト、ロギング）へのポートを宣言する。
+// 実装は infrastructure に存在する。
 package gateway
 
 import (
@@ -11,7 +11,7 @@ import (
 
 // --- LLM ---
 
-// LLMRequest is a single generation call.
+// LLMRequest は単一の生成呼び出しを表す。
 type LLMRequest struct {
 	System      string
 	Prompt      string
@@ -19,8 +19,8 @@ type LLMRequest struct {
 	MaxTokens   int
 }
 
-// LLM generates text from a prompt. The agent uses it only for prose/enrichment,
-// so the pipeline still works end-to-end with a mock implementation.
+// LLM はプロンプトからテキストを生成する。エージェントは文章生成や情報の付加に
+// のみ利用するため、モック実装でもパイプラインは end-to-end で動作する。
 type LLM interface {
 	Name() string
 	Model() string
@@ -29,7 +29,7 @@ type LLM interface {
 
 // --- Metadata ---
 
-// MetadataSource answers "what is the newest version" and "is there an advisory".
+// MetadataSource は「最新バージョンは何か」「アドバイザリは存在するか」に答える。
 type MetadataSource interface {
 	Name() string
 	LatestVersion(ctx context.Context, eco model.Ecosystem, name, current string) (string, error)
@@ -38,7 +38,7 @@ type MetadataSource interface {
 
 // --- Notifications ---
 
-// NotifyLevel is the urgency/kind of a notification.
+// NotifyLevel は通知の緊急度・種別を表す。
 type NotifyLevel string
 
 const (
@@ -48,7 +48,7 @@ const (
 	NotifySuccess  NotifyLevel = "success"
 )
 
-// NotifyMessage is a single human-facing notification.
+// NotifyMessage は人間向けの単一の通知を表す。
 type NotifyMessage struct {
 	Level NotifyLevel
 	Title string
@@ -56,7 +56,7 @@ type NotifyMessage struct {
 	URL   string
 }
 
-// Notifier delivers notifications.
+// Notifier は通知を配信する。
 type Notifier interface {
 	Name() string
 	Notify(ctx context.Context, msg NotifyMessage) error
@@ -64,7 +64,7 @@ type Notifier interface {
 
 // --- Git host ---
 
-// CreatePROptions describes a PR to open.
+// CreatePROptions は作成する PR を記述する。
 type CreatePROptions struct {
 	Repository   string
 	Base         string
@@ -74,7 +74,7 @@ type CreatePROptions struct {
 	ChangedFiles []string
 }
 
-// PushFixOptions describes a follow-up fix commit.
+// PushFixOptions は後続の修正コミットを記述する。
 type PushFixOptions struct {
 	Repository   string
 	Branch       string
@@ -83,8 +83,8 @@ type PushFixOptions struct {
 	ChangedFiles []string
 }
 
-// CICheckOptions asks for the CI status of a PR. Attempt drives the mock
-// self-heal scenario; ShouldFailFirst is a mock-only hint.
+// CICheckOptions は PR の CI ステータスを問い合わせる。Attempt はモックの自己修復
+// シナリオを駆動し、ShouldFailFirst はモック専用のヒントである。
 type CICheckOptions struct {
 	Repository      string
 	PRNumber        int
@@ -93,19 +93,19 @@ type CICheckOptions struct {
 	ShouldFailFirst bool
 }
 
-// CICheck is the outcome of a CI status query.
+// CICheck は CI ステータス問い合わせの結果を表す。
 type CICheck struct {
 	Passed     bool
 	LogSummary string
 }
 
-// PRRef identifies an opened pull request.
+// PRRef は作成済みのプルリクエストを識別する。
 type PRRef struct {
 	Number int
 	URL    string
 }
 
-// Git is the git-host abstraction.
+// Git は git ホストの抽象化を表す。
 type Git interface {
 	Name() string
 	CreateBranchAndPR(ctx context.Context, opts CreatePROptions) (PRRef, error)
@@ -115,7 +115,7 @@ type Git interface {
 
 // --- Source manifests & files ---
 
-// Dependency is a dependency discovered in a manifest.
+// Dependency はマニフェストから検出された依存関係を表す。
 type Dependency struct {
 	Name           string
 	CurrentVersion string
@@ -123,7 +123,7 @@ type Dependency struct {
 	Ecosystem      model.Ecosystem
 }
 
-// Ecosystem knows how to read a manifest and apply a version bump to it.
+// Ecosystem はマニフェストの読み取りと、それへのバージョン更新の適用方法を知る。
 type Ecosystem interface {
 	ID() model.Ecosystem
 	Detect(repoPath string) bool
@@ -131,21 +131,21 @@ type Ecosystem interface {
 	ApplyUpdate(repoPath, name, target string) ([]string, error)
 }
 
-// EcosystemProvider discovers which ecosystems apply to a repository.
+// EcosystemProvider はリポジトリに該当するエコシステムを発見する。
 type EcosystemProvider interface {
 	ForRepo(repoPath string) []Ecosystem
 	ByID(id model.Ecosystem) Ecosystem
 }
 
-// SourceScanner finds where a package is used in a repository's source.
+// SourceScanner はリポジトリのソース内でパッケージが使われている箇所を見つける。
 type SourceScanner interface {
 	UsageSites(repoPath, packageName string) []string
 }
 
 // --- Logging ---
 
-// Logger is the cross-cutting logging port. Step is used for one line per
-// lifecycle move so the asynchronous flow is observable during demos.
+// Logger は横断的なロギングのポートである。Step はライフサイクルの遷移ごとに 1 行
+// 出力するために使われ、デモ中に非同期フローを観測できるようにする。
 type Logger interface {
 	Step(msg string)
 	Info(msg string)

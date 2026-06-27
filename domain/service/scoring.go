@@ -7,7 +7,7 @@ import (
 	"github.com/ZONO33LHD/anneal/domain/policy"
 )
 
-// ScoreComponents holds the individual 0..100 scores.
+// ScoreComponents は各個別スコア（0..100）を保持する。
 type ScoreComponents struct {
 	CI, Review, Risk, PRQuality, FixAccuracy, Merge, Regression float64
 }
@@ -16,7 +16,7 @@ func clamp(n float64) float64 {
 	return math.Max(0, math.Min(100, math.Round(n)))
 }
 
-// ComputeComponents derives each score from the current record state.
+// ComputeComponents は現在のレコード状態から各スコアを導出する。
 func ComputeComponents(u model.DependencyUpdate) ScoreComponents {
 	return ScoreComponents{
 		CI:          ciScore(u),
@@ -29,7 +29,7 @@ func ComputeComponents(u model.DependencyUpdate) ScoreComponents {
 	}
 }
 
-// ComputeTotal is the weighted total. Regression is tracked separately.
+// ComputeTotal は重み付けの合計を返す。Regression は別途追跡される。
 func ComputeTotal(c ScoreComponents) float64 {
 	w := policy.ScoreWeights
 	total := c.CI*w.CI + c.Review*w.Review + c.Risk*w.Risk +
@@ -42,9 +42,9 @@ var finalStatuses = map[model.State]bool{
 	model.StateDone: true, model.StateRegressed: true, model.StateClosed: true,
 }
 
-// BuildEvaluation builds or updates an evaluation. Scores arrive over time
-// (CI -> review -> merge -> regression); this re-computes components and promotes
-// partial -> final once the outcome is known.
+// BuildEvaluation は評価を構築または更新する。スコアは時間をかけて到着する
+// （CI -> review -> merge -> regression）。本関数は各コンポーネントを再計算し、
+// 結果が判明した時点で partial -> final へと昇格させる。
 func BuildEvaluation(u model.DependencyUpdate, prev *model.AgentEvaluation) model.AgentEvaluation {
 	c := ComputeComponents(u)
 	status := model.ScorePartial
@@ -84,7 +84,7 @@ func ciScore(u model.DependencyUpdate) float64 {
 	switch u.CI.Status {
 	case "passed":
 		if u.CI.Attempts > 1 {
-			return 70 // pass-after-fix is discounted
+			return 70 // 修正後の成功は減点される
 		}
 		return 100
 	case "failed":

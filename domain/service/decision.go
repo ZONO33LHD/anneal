@@ -8,9 +8,9 @@ import (
 	"github.com/ZONO33LHD/anneal/domain/policy"
 )
 
-// Decision is the outcome of the approval gate.
+// Decision は承認ゲートの結果を表す。
 type Decision struct {
-	Decision string // "auto" or "human"
+	Decision string // "auto" または "human"
 	Reasons  []string
 }
 
@@ -24,9 +24,9 @@ func isSensitive(name string) bool {
 	return false
 }
 
-// Decide returns whether a PR can proceed automatically or needs human approval.
-// Low-quality model output is caught here and routed to a human (the safety net
-// for running on the cheapest model tier).
+// Decide は PR を自動で進められるか、人間の承認が必要かを返す。
+// 品質の低いモデル出力はここで捕捉され人間へ回される（最も安価なモデル階層で
+// 動かすためのセーフティネット）。
 func Decide(rec model.DependencyUpdate) Decision {
 	if isSensitive(rec.PackageName) {
 		return Decision{"human", []string{"sensitive package (auth/payment/security)"}}
@@ -57,7 +57,7 @@ func Decide(rec model.DependencyUpdate) Decision {
 	return Decision{"human", []string{"default to human for safety"}}
 }
 
-// finalGate routes low AI confidence or repeated CI failures to a human.
+// finalGate は AI の確信度が低い場合や CI が繰り返し失敗した場合に人間へ回す。
 func finalGate(rec model.DependencyUpdate, reasons []string) Decision {
 	if rec.Impact != nil && rec.Impact.Confidence < 0.5 {
 		return Decision{"human", append(reasons, fmt.Sprintf("low AI confidence (%.2f)", rec.Impact.Confidence))}

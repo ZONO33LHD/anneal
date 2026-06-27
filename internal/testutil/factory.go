@@ -1,4 +1,4 @@
-// Package testutil provides shared fixtures for tests.
+// Package testutil はテスト向けの共有フィクスチャを提供する。
 package testutil
 
 import (
@@ -9,7 +9,7 @@ import (
 	"github.com/ZONO33LHD/anneal/domain/model"
 )
 
-// MakeUpdate returns a DependencyUpdate with sensible defaults for tests.
+// MakeUpdate はテスト向けに妥当なデフォルト値を持つ DependencyUpdate を返す。
 func MakeUpdate() model.DependencyUpdate {
 	repo, pkg, target := "acme/demo", "axios", "1.7.0"
 	return model.DependencyUpdate{
@@ -30,9 +30,9 @@ func MakeUpdate() model.DependencyUpdate {
 	}
 }
 
-// CopyFixture copies fixtures/sample-repo into a temp dir so applyUpdate never
-// mutates the fixture. relRoot is the path from the test package to the module
-// root (e.g. "../.." for a package two levels deep).
+// CopyFixture は fixtures/sample-repo を一時ディレクトリへコピーし、applyUpdate が
+// フィクスチャを変更しないようにする。relRoot はテストパッケージからモジュール
+// ルートまでのパスである（例: 2 階層深いパッケージなら "../.."）。
 func CopyFixture(t *testing.T, relRoot string) string {
 	t.Helper()
 	src := filepath.Join(relRoot, "fixtures", "sample-repo")
