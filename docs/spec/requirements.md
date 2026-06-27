@@ -11,6 +11,8 @@
 | プロダクト名 | **Anneal** |
 | リポジトリ名（案） | `anneal` / `anneal-agent` / `anneal-core`（モジュール分割時） |
 | 種別 | 自己改善型 Dependency / Security 更新エージェント（DevSecOps 支援） |
+| 実装言語 | **Go**（単一バイナリ配布・Cloud Run / CLI 向き） |
+| 更新対象 | npm（`package.json`）/ Go（`go.mod`） |
 | ドキュメント | 要件定義書（v2・土台確定版） |
 | 後続成果物 | 設計書（本書をベースに作成予定） |
 
@@ -557,7 +559,8 @@ flowchart LR
 
 **MVP の土台簡略化**：オーケストレーションは **Scheduler ポーリング（照合ループ）中心**で組むと Webhook 公開エンドポイント不要で**ローカルデモが容易**。Webhook 即時反応は「シームレスさ」を見せたい本番デモ用に追加。状態機械・`update_key` 冪等性は MVP でも必須（ここを省くと PR 乱立で崩れる）。
 
-**推奨対象：Node.js / TypeScript**（`package.json` / lock files、`npm outdated`・`npm audit`、GitHub Actions）。デモ映えする。代替は Python（`pip-audit` / `pytest`）。
+**実装言語：Go**（単一バイナリで配布でき Cloud Run / CLI 双方に載せやすい。インターフェース駆動の本設計と相性が良い）。標準 `testing` + テーブル駆動 + `-race` でテストする。
+**更新対象エコシステム：npm（`package.json` / lock files）と Go（`go.mod` / `go.sum`）**。脆弱性は OSV.dev、最新版は npm レジストリ / Go module proxy から取得する。GitHub Actions の CI 結果を扱う。
 
 ---
 

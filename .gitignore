@@ -1,0 +1,16 @@
+# Build output
+/anneal
+/bin/
+dist/
+
+# Local state (single source of truth lives here at runtime)
+.anneal/
+
+# Secrets
+.env
+
+# Coverage / test artifacts
+*.out
+coverage.*
+
+.DS_Store
