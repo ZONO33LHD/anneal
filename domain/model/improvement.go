@@ -28,7 +28,7 @@ type AgentImprovement struct {
 	PreviousVersion  string            `json:"previous_version"`
 	CandidateVersion string            `json:"candidate_version"`
 	Hypothesis       string            `json:"hypothesis"`
-	ProposedChange   string            `json:"proposedChange"`
+	ProposedChange   string            `json:"proposed_change"`
 	Status           ImprovementStatus `json:"status"`
 	CreatedAt        string            `json:"created_at"`
 }

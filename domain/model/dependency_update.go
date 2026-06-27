@@ -44,18 +44,18 @@ const (
 type CVEInfo struct {
 	ID               string `json:"id"`
 	Severity         string `json:"severity"` // critical|high|moderate|low
-	AffectedRange    string `json:"affectedRange"`
-	PatchedVersion   string `json:"patchedVersion"`
-	ExploitAvailable bool   `json:"exploitAvailable,omitempty"`
+	AffectedRange    string `json:"affected_range"`
+	PatchedVersion   string `json:"patched_version"`
+	ExploitAvailable bool   `json:"exploit_available,omitempty"`
 	Summary          string `json:"summary,omitempty"`
 }
 
 // ImpactAnalysis is the output of the impact-analysis stage.
 type ImpactAnalysis struct {
-	UsageSites        []string  `json:"usageSites"`
-	HasBreakingChange bool      `json:"hasBreakingChange"`
-	AffectedFiles     []string  `json:"affectedFiles"`
-	RiskLevel         RiskLevel `json:"riskLevel"`
+	UsageSites        []string  `json:"usage_sites"`
+	HasBreakingChange bool      `json:"has_breaking_change"`
+	AffectedFiles     []string  `json:"affected_files"`
+	RiskLevel         RiskLevel `json:"risk_level"`
 	Summary           string    `json:"summary"`
 	Confidence        float64   `json:"confidence"` // 0..1
 }
@@ -63,10 +63,10 @@ type ImpactAnalysis struct {
 // CIResult is the latest CI outcome for the pull request.
 type CIResult struct {
 	Status          string            `json:"status"` // running|passed|failed
-	FailureCategory CIFailureCategory `json:"failureCategory,omitempty"`
+	FailureCategory CIFailureCategory `json:"failure_category,omitempty"`
 	Fixable         bool              `json:"fixable,omitempty"`
 	Attempts        int               `json:"attempts"`
-	LogSummary      string            `json:"logSummary,omitempty"`
+	LogSummary      string            `json:"log_summary,omitempty"`
 }
 
 // TransitionLog is one entry in the immutable audit history of a record.
@@ -82,7 +82,7 @@ type TransitionLog struct {
 type DependencyUpdate struct {
 	UpdateKey          string          `json:"update_key"`
 	Repository         string          `json:"repository"`
-	RepoPath           string          `json:"repoPath,omitempty"`
+	RepoPath           string          `json:"repo_path,omitempty"`
 	Ecosystem          Ecosystem       `json:"ecosystem"`
 	PackageName        string          `json:"package_name"`
 	CurrentVersion     string          `json:"current_version"`
@@ -99,7 +99,7 @@ type DependencyUpdate struct {
 	PullRequestURL     string          `json:"pull_request_url,omitempty"`
 	PullRequestNumber  int             `json:"pull_request_number,omitempty"`
 	Branch             string          `json:"branch,omitempty"`
-	ReviewCommentCount *int            `json:"reviewCommentCount,omitempty"`
+	ReviewCommentCount *int            `json:"review_comment_count,omitempty"`
 	History            []TransitionLog `json:"history"`
 	CreatedAt          string          `json:"created_at"`
 	UpdatedAt          string          `json:"updated_at"`

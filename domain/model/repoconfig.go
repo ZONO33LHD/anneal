@@ -5,10 +5,10 @@ import "strings"
 // RepoConfig is the per-repository policy committed as .anneal.yml. Repo settings
 // override the organisation defaults represented by DefaultRepoConfig.
 type RepoConfig struct {
-	BaseBranch           string   `yaml:"baseBranch"`
+	BaseBranch           string   `yaml:"base_branch"`
 	Ignore               []string `yaml:"ignore"`
-	AutoPRTypes          []string `yaml:"autoPrTypes"`
-	RegressionWindowDays int      `yaml:"regressionWindowDays"`
+	AutoPRTypes          []string `yaml:"auto_pr_types"`
+	RegressionWindowDays int      `yaml:"regression_window_days"`
 }
 
 // DefaultRepoConfig returns the organisation default configuration.
