@@ -21,6 +21,12 @@ type GitHub struct {
 	http  *http.Client
 }
 
+// GitHub Check Run の conclusion のうち「成功」とみなす値（GitHub API 固有の値）。
+const (
+	ghConclusionSuccess = "success"
+	ghConclusionNeutral = "neutral"
+)
+
 // NewGitHub は GitHub クライアントを生成する。
 func NewGitHub(token string) gateway.Git {
 	return &GitHub{token: token, http: &http.Client{Timeout: 30 * time.Second}}
@@ -100,9 +106,9 @@ func (g *GitHub) CheckCI(ctx context.Context, opts gateway.CICheckOptions) (gate
 	if err := g.do(ctx, http.MethodGet, url, nil, &out); err != nil {
 		return gateway.CICheck{}, err
 	}
-	var failed []string
+	failed := make([]string, 0, len(out.CheckRuns))
 	for _, r := range out.CheckRuns {
-		if r.Conclusion != "" && r.Conclusion != "success" && r.Conclusion != "neutral" {
+		if r.Conclusion != "" && r.Conclusion != ghConclusionSuccess && r.Conclusion != ghConclusionNeutral {
 			failed = append(failed, r.Name)
 		}
 	}
