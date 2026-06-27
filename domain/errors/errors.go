@@ -43,8 +43,7 @@ func Wrap(err error, code Code, message string) *AppError {
 
 // CodeOf extracts the code, defaulting to internal.
 func CodeOf(err error) Code {
-	var ae *AppError
-	if errors.As(err, &ae) {
+	if ae, ok := errors.AsType[*AppError](err); ok {
 		return ae.Code
 	}
 	return CodeInternal
