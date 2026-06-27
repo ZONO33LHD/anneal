@@ -1,6 +1,6 @@
 /**
  * Minimal structured logger. The orchestrator emits one line per state-machine
- * step so the asynchronous lifecycle (7章) is observable during demos.
+ * step so the asynchronous lifecycle is observable during demos.
  */
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'step';
 

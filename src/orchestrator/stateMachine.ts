@@ -13,9 +13,9 @@ export class InvalidTransitionError extends Error {
 }
 
 /**
- * Move a record one step along the lifecycle. Returns a NEW record (immutability,
- * per coding-style rules) with the transition appended to its audit history.
- * Throws if the transition is not allowed by the graph (7章).
+ * Move a record one step along the lifecycle. Returns a NEW record (immutable
+ * update) with the transition appended to its audit history. Throws if the
+ * transition is not allowed by the graph.
  */
 export function transition(
   record: DependencyUpdate,
@@ -40,7 +40,7 @@ export function transition(
   };
 }
 
-/** Mark a record as errored from any state (NF-007 retry-safe). */
+/** Mark a record as errored from any state; the error state is retry-safe. */
 export function toError(record: DependencyUpdate, reason: string): DependencyUpdate {
   const at = now();
   return {

@@ -21,7 +21,7 @@ describe('JsonStore', () => {
     expect(all[0]!.package_name).toBe('axios');
   });
 
-  it('distinguishes active from terminal records (NF-008)', async () => {
+  it('distinguishes active from terminal records', async () => {
     const store = new MemoryStore();
     const active = makeUpdate({ package_name: 'axios', status: 'pr_created' });
     const done = makeUpdate({ package_name: 'lodash', target_version: '5', status: 'done' });

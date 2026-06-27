@@ -20,8 +20,8 @@ function emptySnapshot(): Snapshot {
 /**
  * Local JSON-backed store — the single source of truth for the demo/local mode.
  * Designed to be swapped for a Firestore implementation behind the same `Store`
- * interface (6.2). All reads/writes go through an in-memory snapshot that is
- * flushed to disk after each mutation, keeping the process stateless-friendly.
+ * interface. All reads/writes go through an in-memory snapshot that is flushed to
+ * disk after each mutation, keeping the process stateless-friendly.
  */
 export class JsonStore implements Store {
   private snapshot: Snapshot = emptySnapshot();

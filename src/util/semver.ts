@@ -1,6 +1,6 @@
 /**
- * Tiny semver helpers — enough to classify update_type (F-004) without pulling a
- * full semver dependency. Handles common range prefixes (^ ~ = v >=).
+ * Tiny semver helpers — enough to classify update_type without pulling a full
+ * semver dependency. Handles common range prefixes (^ ~ = v >=).
  */
 export type UpdateType = 'patch' | 'minor' | 'major';
 

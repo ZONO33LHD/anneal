@@ -1,7 +1,7 @@
 /**
- * Agent evaluation record (F-027〜F-033). Scores arrive at different times
+ * Agent evaluation record. Scores arrive at different times
  * (CI → review → merge → regression), so a record starts `partial` and is
- * promoted to `final` once the merge outcome is known (9.5).
+ * promoted to `final` once the merge outcome is known.
  */
 export type ScoreStatus = 'partial' | 'final';
 
@@ -20,13 +20,13 @@ export interface AgentEvaluation {
   regression_score: number;
   total_score: number;
   score_status: ScoreStatus;
-  /** Monotonic update order — stable "recent N" selection (9.5 / T10). */
+  /** Monotonic update order — stable "recent N" selection. */
   seq: number;
   created_at: string;
   updated_at: string;
 }
 
-/** Scoring weights for the total (9.5). Regression is tracked separately. */
+/** Scoring weights for the total. Regression is tracked separately. */
 export const SCORE_WEIGHTS = {
   ci: 0.3,
   review: 0.2,

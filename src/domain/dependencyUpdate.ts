@@ -6,7 +6,7 @@ export type Ecosystem = 'npm' | 'go';
 export type RiskLevel = 'low' | 'medium' | 'high';
 export type Priority = 'critical' | 'high' | 'medium' | 'low';
 
-/** CVE / advisory information attached to a security-driven update (F-005). */
+/** CVE / advisory information attached to a security-driven update. */
 export interface CveInfo {
   id: string;
   severity: 'critical' | 'high' | 'moderate' | 'low';
@@ -16,7 +16,7 @@ export interface CveInfo {
   summary?: string;
 }
 
-/** Output of the impact analysis stage (F-007〜F-012). */
+/** Output of the impact analysis stage. */
 export interface ImpactAnalysis {
   usageSites: string[];
   hasBreakingChange: boolean;
@@ -24,10 +24,10 @@ export interface ImpactAnalysis {
   affectedFiles: string[];
   riskLevel: RiskLevel;
   summary: string;
-  confidence: number; // 0..1, AI Confidence (10章)
+  confidence: number; // 0..1, how confident the AI is in this analysis
 }
 
-/** Latest CI outcome for the PR (F-021〜F-026). */
+/** Latest CI outcome for the pull request. */
 export interface CiResult {
   status: 'running' | 'passed' | 'failed';
   failureCategory?:
@@ -41,7 +41,7 @@ export interface CiResult {
   logSummary?: string;
 }
 
-/** One entry in the immutable transition history (NF-005 auditability). */
+/** One entry in the immutable transition history, kept for auditability. */
 export interface TransitionLog {
   from: State;
   to: State;
@@ -50,8 +50,8 @@ export interface TransitionLog {
 }
 
 /**
- * The central aggregate. `update_key` (7.1) makes a given update unique and is
- * the basis for idempotency / duplicate prevention (NF-008, NF-021).
+ * The central aggregate. `update_key` makes a given update unique and is the
+ * basis for idempotency and duplicate prevention.
  */
 export interface DependencyUpdate {
   update_key: string;

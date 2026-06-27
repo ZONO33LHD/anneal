@@ -1,6 +1,6 @@
 /**
- * Self-improvement record (Annealing Loop, F-034〜F-042). In this build we cover
- * up to candidate generation (Should scope); A/B adoption is future work.
+ * Self-improvement record (Annealing Loop). In this build we cover up to
+ * candidate generation; A/B adoption is future work.
  */
 export type ImprovementStatus = 'candidate' | 'adopted' | 'rolled_back';
 

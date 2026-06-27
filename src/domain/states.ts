@@ -1,7 +1,7 @@
 /**
- * Dependency Update Lifecycle — the state machine that is the backbone of Anneal
- * (要件書 7章). Every trigger (8章) does exactly one thing: read a record, move
- * it one step along this graph, and write it back.
+ * Dependency Update Lifecycle — the state machine that is the backbone of Anneal.
+ * Every trigger does exactly one thing: read a record, move it one step along
+ * this graph, and write it back.
  */
 export const STATES = [
   'detected',
@@ -63,9 +63,9 @@ export function isTerminal(state: State): boolean {
 }
 
 /**
- * Active = still in flight. Used by NF-008 duplicate-prevention: a new record is
- * not created for an update_key that already has an active record. `error` counts
- * as active because it is retryable.
+ * Active = still in flight. Used by duplicate-prevention: a new record is not
+ * created for an update_key that already has an active record. `error` counts as
+ * active because it is retryable.
  */
 export function isActive(state: State): boolean {
   return !isTerminal(state);

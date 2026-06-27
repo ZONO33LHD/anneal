@@ -3,14 +3,13 @@ import type { AgentEvaluation } from '../domain/evaluation.js';
 import type { AgentImprovement, FailureCase } from '../domain/improvement.js';
 
 /**
- * Repository-pattern interface (common/patterns.md). The persistent store is the
- * single source of truth (NF-022); the orchestrator reads, advances one step,
- * and writes back.
+ * Repository-pattern interface. The persistent store is the single source of
+ * truth; the orchestrator reads, advances one step, and writes back.
  */
 export interface Store {
   // --- DependencyUpdate ---
   getUpdate(updateKey: string): Promise<DependencyUpdate | undefined>;
-  /** Active record (non-terminal) for an update_key — basis for NF-008. */
+  /** Active record (non-terminal) for an update_key — basis for duplicate prevention. */
   getActiveUpdate(updateKey: string): Promise<DependencyUpdate | undefined>;
   putUpdate(record: DependencyUpdate): Promise<void>;
   listUpdates(): Promise<DependencyUpdate[]>;

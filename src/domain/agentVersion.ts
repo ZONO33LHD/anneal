@@ -1,6 +1,6 @@
 /**
- * Agent version (F-056). Every PR / evaluation is tagged with the version of the
- * prompt / tool / rule set that produced it, so improvement effects can be
+ * Agent version. Every pull request and evaluation is tagged with the version of
+ * the prompt / tool / rule set that produced it, so improvement effects can be
  * attributed and audited later.
  */
 export type AgentVersionKind = 'prompt' | 'tool' | 'rule' | 'weights';
