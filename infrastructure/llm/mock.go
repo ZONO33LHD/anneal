@@ -1,4 +1,4 @@
-// Package llm implements the LLM port (mock + Gemini).
+// Package llm は LLM のポートを実装する（モック + Gemini）。
 package llm
 
 import (
@@ -8,12 +8,12 @@ import (
 	"github.com/ZONO33LHD/anneal/domain/gateway"
 )
 
-// Mock is a deterministic LLM. It recognises a tag at the start of the prompt
-// (e.g. "[pr-body]") and returns plausible, task-aware text, keeping demos
-// reproducible and tests free of network/keys.
+// Mock は決定論的な LLM。プロンプト先頭のタグ（例: "[pr-body]"）を認識し、
+// もっともらしくタスクに即したテキストを返す。これによりデモを再現可能に保ち、
+// テストをネットワークや鍵に依存させずに済む。
 type Mock struct{}
 
-// NewMock returns a mock LLM.
+// NewMock はモックの LLM を返す。
 func NewMock() gateway.LLM {
 	return Mock{}
 }

@@ -19,13 +19,13 @@ var emoji = map[gateway.NotifyLevel]string{
 	gateway.NotifySuccess:  ":white_check_mark:",
 }
 
-// Slack posts to an Incoming Webhook using the standard HTTP client.
+// Slack は標準の HTTP クライアントを使って Incoming Webhook へ投稿する。
 type Slack struct {
 	webhookURL string
 	http       *http.Client
 }
 
-// NewSlack builds a Slack notifier.
+// NewSlack は Slack の Notifier を生成する。
 func NewSlack(webhookURL string) gateway.Notifier {
 	return &Slack{webhookURL: webhookURL, http: &http.Client{Timeout: 10 * time.Second}}
 }

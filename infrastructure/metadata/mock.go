@@ -1,4 +1,4 @@
-// Package metadata implements the MetadataSource port (offline mock + OSV/registry).
+// Package metadata は MetadataSource のポートを実装する（オフラインモック + OSV/レジストリ）。
 package metadata
 
 import (
@@ -13,7 +13,7 @@ type entry struct {
 	advisories []model.CVEInfo
 }
 
-// Offline dataset mirroring fixtures/sample-repo. Keyed by "ecosystem:name".
+// fixtures/sample-repo を反映したオフラインのデータセット。キーは "ecosystem:name"。
 var dataset = map[string]entry{
 	"npm:lodash": {
 		latest: "4.17.21",
@@ -25,7 +25,7 @@ var dataset = map[string]entry{
 	},
 	"npm:axios":                   {latest: "1.7.0"},
 	"npm:express":                 {latest: "4.19.2"},
-	"npm:chalk":                   {latest: "5.3.0"}, // major: ESM-only, breaking
+	"npm:chalk":                   {latest: "5.3.0"}, // メジャー: ESM 専用、破壊的変更
 	"npm:typescript":              {latest: "5.6.2"},
 	"go:github.com/gin-gonic/gin": {latest: "v1.9.1"},
 	"go:golang.org/x/crypto": {
@@ -38,10 +38,10 @@ var dataset = map[string]entry{
 	},
 }
 
-// Mock is an offline metadata source for deterministic demos.
+// Mock は決定論的なデモ向けのオフラインメタデータソース。
 type Mock struct{}
 
-// NewMock returns a mock metadata source.
+// NewMock はモックのメタデータソースを返す。
 func NewMock() gateway.MetadataSource {
 	return Mock{}
 }

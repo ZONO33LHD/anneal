@@ -1,4 +1,4 @@
-// Package repoconfig implements the RepoConfigLoader port by reading .anneal.yml.
+// Package repoconfig は .anneal.yml を読み込むことで RepoConfigLoader のポートを実装する。
 package repoconfig
 
 import (
@@ -10,15 +10,15 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Loader reads .anneal.yml from a repository.
+// Loader はリポジトリから .anneal.yml を読み込む。
 type Loader struct{}
 
-// NewLoader returns a RepoConfigLoader.
+// NewLoader は RepoConfigLoader を返す。
 func NewLoader() gateway.RepoConfigLoader {
 	return Loader{}
 }
 
-// Load reads .anneal.yml, falling back to defaults (a missing file is fine).
+// Load は .anneal.yml を読み込み、なければデフォルトにフォールバックする（ファイルが無くても問題ない）。
 func (Loader) Load(repoPath string) model.RepoConfig {
 	cfg := model.DefaultRepoConfig()
 	data, err := os.ReadFile(filepath.Join(repoPath, ".anneal.yml"))

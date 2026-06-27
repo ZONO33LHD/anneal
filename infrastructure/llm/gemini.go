@@ -11,15 +11,15 @@ import (
 	"github.com/ZONO33LHD/anneal/domain/gateway"
 )
 
-// Gemini calls the Generative Language REST API directly (no SDK dependency),
-// defaulting to the cheapest model tier.
+// Gemini は Generative Language REST API を直接呼び出す（SDK 依存なし）。
+// デフォルトでは最も安価なモデルティアを使用する。
 type Gemini struct {
 	apiKey string
 	model  string
 	http   *http.Client
 }
 
-// NewGemini builds a Gemini client. model defaults to gemini-2.5-flash-lite.
+// NewGemini は Gemini クライアントを生成する。model のデフォルトは gemini-2.5-flash-lite。
 func NewGemini(apiKey, model string) gateway.LLM {
 	if model == "" {
 		model = "gemini-2.5-flash-lite"

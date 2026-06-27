@@ -15,14 +15,14 @@ import (
 	"github.com/ZONO33LHD/anneal/domain/model"
 )
 
-// OSV uses only the standard HTTP client: latest version from the npm registry /
-// Go module proxy, advisories from OSV.dev. Network failures degrade gracefully
-// to "no update / no advisory".
+// OSV は標準の HTTP クライアントのみを使用する。最新バージョンは npm レジストリ /
+// Go module proxy から、アドバイザリは OSV.dev から取得する。ネットワーク障害時は
+// 「更新なし / アドバイザリなし」へグレースフルに縮退する。
 type OSV struct {
 	http *http.Client
 }
 
-// NewOSV returns a live metadata source.
+// NewOSV はライブのメタデータソースを返す。
 func NewOSV() gateway.MetadataSource {
 	return &OSV{http: &http.Client{Timeout: 15 * time.Second}}
 }

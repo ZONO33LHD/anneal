@@ -1,4 +1,4 @@
-// Package git implements the git-host port (mock + GitHub).
+// Package git は git ホストのポートを実装する（モック + GitHub）。
 package git
 
 import (
@@ -10,15 +10,15 @@ import (
 	"github.com/ZONO33LHD/anneal/domain/gateway"
 )
 
-// Mock is a scripted git provider for local demos. PR numbers come from a
-// counter; CI outcome is deterministic: when ShouldFailFirst is set, attempt 0
-// fails (fixable) and later attempts pass — reproducing the
-// "CI fails -> self-heal -> passes" story.
+// Mock はローカルデモ向けにスクリプト化された git プロバイダー。PR 番号はカウンターから
+// 採番される。CI の結果は決定論的で、ShouldFailFirst が設定されている場合は試行 0 が
+// 失敗し（修正可能）、それ以降の試行は成功する。これにより
+// 「CI が失敗 -> 自己修復 -> 成功」というストーリーを再現する。
 type Mock struct {
 	prCounter atomic.Int64
 }
 
-// NewMock returns a mock git provider.
+// NewMock はモックの git プロバイダーを返す。
 func NewMock() gateway.Git {
 	return &Mock{}
 }

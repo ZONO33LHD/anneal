@@ -1,5 +1,5 @@
-// Package log implements the Logger port with simple, icon-prefixed console
-// output, so the asynchronous lifecycle is readable during demos.
+// Package log は Logger のポートを、アイコン接頭辞付きのシンプルなコンソール出力で
+// 実装する。これによりデモ中に非同期のライフサイクルを読み取りやすくする。
 package log
 
 import (
@@ -9,12 +9,12 @@ import (
 	"github.com/ZONO33LHD/anneal/domain/gateway"
 )
 
-// Console is a minimal console logger.
+// Console は最小限のコンソールロガー。
 type Console struct {
 	verbose bool
 }
 
-// NewConsole returns a console logger. verbose enables Debug output.
+// NewConsole はコンソールロガーを返す。verbose は Debug 出力を有効化する。
 func NewConsole(verbose bool) gateway.Logger {
 	return &Console{verbose: verbose}
 }

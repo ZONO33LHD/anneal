@@ -1,4 +1,4 @@
-// Package notify implements the Notifier port (console + Slack).
+// Package notify は Notifier のポートを実装する（console + Slack）。
 package notify
 
 import (
@@ -16,10 +16,10 @@ var badge = map[gateway.NotifyLevel]string{
 	gateway.NotifySuccess:  "✅ SUCCESS",
 }
 
-// Console prints a Slack-like card to stdout. Default notifier — no secret needed.
+// Console は Slack 風のカードを stdout へ出力する。デフォルトの Notifier で、シークレットは不要。
 type Console struct{}
 
-// NewConsole returns a console notifier.
+// NewConsole はコンソールの Notifier を返す。
 func NewConsole() gateway.Notifier {
 	return Console{}
 }

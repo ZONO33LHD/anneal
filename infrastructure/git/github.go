@@ -12,16 +12,16 @@ import (
 	"github.com/ZONO33LHD/anneal/domain/gateway"
 )
 
-// GitHub talks to the GitHub REST API directly (no SDK dependency). Committing
-// file contents to a branch via the Git data API is left as a focused follow-up;
-// this covers PR creation and CI status, which real-mode runs assert. Branch and
-// commit creation are logged no-ops.
+// GitHub は GitHub REST API を直接呼び出す（SDK 依存なし）。Git data API を使って
+// ファイル内容をブランチへコミットする処理は、的を絞った後続対応として残している。
+// ここでは real モード実行時に検証される PR 作成と CI ステータスを扱う。ブランチ作成と
+// コミット作成はログ出力のみで何もしない。
 type GitHub struct {
 	token string
 	http  *http.Client
 }
 
-// NewGitHub builds a GitHub client.
+// NewGitHub は GitHub クライアントを生成する。
 func NewGitHub(token string) gateway.Git {
 	return &GitHub{token: token, http: &http.Client{Timeout: 30 * time.Second}}
 }
