@@ -36,7 +36,9 @@ func (GitHub) Name() string {
 	return "github"
 }
 
-func split(repository string) (owner, repo string) {
+// splitOwnerRepo は "owner/repo" を owner と repo に分解する（戻り値の順は owner, repo）。
+// "/" を含まない不正入力時は owner にそのまま入れ、repo は空にする。
+func splitOwnerRepo(repository string) (owner, repo string) {
 	parts := strings.SplitN(repository, "/", 2)
 	if len(parts) == 2 {
 		return parts[0], parts[1]
@@ -76,7 +78,7 @@ func (g *GitHub) do(ctx context.Context, method, url string, body, out any) erro
 
 func (g *GitHub) CreateBranchAndPR(ctx context.Context, opts gateway.CreatePROptions) (gateway.PRRef, error) {
 	fmt.Printf("⚠ github: branch/commit creation is a no-op in this build (branch=%s)\n", opts.Branch)
-	owner, repo := split(opts.Repository)
+	owner, repo := splitOwnerRepo(opts.Repository)
 	var out struct {
 		Number  int    `json:"number"`
 		HTMLURL string `json:"html_url"`
@@ -95,7 +97,7 @@ func (g *GitHub) PushFix(_ context.Context, opts gateway.PushFixOptions) error {
 }
 
 func (g *GitHub) CheckCI(ctx context.Context, opts gateway.CICheckOptions) (gateway.CICheck, error) {
-	owner, repo := split(opts.Repository)
+	owner, repo := splitOwnerRepo(opts.Repository)
 	var out struct {
 		CheckRuns []struct {
 			Name       string `json:"name"`
