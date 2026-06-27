@@ -1,0 +1,7 @@
+# Anneal per-repository configuration (14章 / NF-012).
+baseBranch: main
+autoPrTypes:
+  - patch
+  - minor
+ignore: []
+regressionWindowDays: 7
