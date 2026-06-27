@@ -12,7 +12,9 @@ type ScoreComponents struct {
 	CI, Review, Risk, PRQuality, FixAccuracy, Merge, Regression float64
 }
 
-func clamp(n float64) float64 { return math.Max(0, math.Min(100, math.Round(n))) }
+func clamp(n float64) float64 {
+	return math.Max(0, math.Min(100, math.Round(n)))
+}
 
 // ComputeComponents derives each score from the current record state.
 func ComputeComponents(u model.DependencyUpdate) ScoreComponents {
