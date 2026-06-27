@@ -106,7 +106,7 @@ func (a *annealUsecase) run(ctx context.Context, average float64) error {
 	}
 
 	hypothesis, _ := a.llm.Generate(ctx, gateway.LLMRequest{
-		Prompt: "[hypothesis] Given these low-scoring dependency-update cases, propose the single most likely systemic weakness in the agent's judgement:\n" + digest.String(),
+		Prompt:      "[hypothesis] Given these low-scoring dependency-update cases, propose the single most likely systemic weakness in the agent's judgement:\n" + digest.String(),
 		Temperature: 0.4,
 	})
 	proposed, _ := a.llm.Generate(ctx, gateway.LLMRequest{
