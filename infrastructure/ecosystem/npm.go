@@ -16,7 +16,9 @@ import (
 // NPM handles package.json dependencies.
 type NPM struct{}
 
-func (NPM) ID() model.Ecosystem { return model.EcosystemNPM }
+func (NPM) ID() model.Ecosystem {
+	return model.EcosystemNPM
+}
 
 func (NPM) Detect(repoPath string) bool {
 	return fileExists(filepath.Join(repoPath, "package.json"))

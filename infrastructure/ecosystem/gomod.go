@@ -13,7 +13,9 @@ import (
 // GoMod handles go.mod dependencies.
 type GoMod struct{}
 
-func (GoMod) ID() model.Ecosystem { return model.EcosystemGo }
+func (GoMod) ID() model.Ecosystem {
+	return model.EcosystemGo
+}
 
 func (GoMod) Detect(repoPath string) bool {
 	return fileExists(filepath.Join(repoPath, "go.mod"))

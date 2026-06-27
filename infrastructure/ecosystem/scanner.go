@@ -20,7 +20,9 @@ var textExt = regexp.MustCompile(`\.(ts|tsx|js|jsx|mjs|cjs|go|json)$`)
 type Scanner struct{}
 
 // NewScanner returns a SourceScanner.
-func NewScanner() gateway.SourceScanner { return Scanner{} }
+func NewScanner() gateway.SourceScanner {
+	return Scanner{}
+}
 
 // UsageSites returns the relative paths of files that reference packageName.
 func (Scanner) UsageSites(repoPath, packageName string) []string {

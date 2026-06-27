@@ -10,7 +10,9 @@ import (
 type updateRepository struct{ db *DB }
 
 // NewUpdateRepository returns the UpdateRepository backed by db.
-func NewUpdateRepository(db *DB) repository.UpdateRepository { return &updateRepository{db} }
+func NewUpdateRepository(db *DB) repository.UpdateRepository {
+	return &updateRepository{db}
+}
 
 func (r *updateRepository) Get(key string) (*model.DependencyUpdate, error) {
 	return r.db.getUpdate(key)
@@ -27,9 +29,13 @@ func (r *updateRepository) GetActive(key string) (*model.DependencyUpdate, error
 	return rec, nil
 }
 
-func (r *updateRepository) Put(rec model.DependencyUpdate) error { return r.db.putUpdate(rec) }
+func (r *updateRepository) Put(rec model.DependencyUpdate) error {
+	return r.db.putUpdate(rec)
+}
 
-func (r *updateRepository) List() ([]model.DependencyUpdate, error) { return r.db.listUpdates() }
+func (r *updateRepository) List() ([]model.DependencyUpdate, error) {
+	return r.db.listUpdates()
+}
 
 func (r *updateRepository) ListActive() ([]model.DependencyUpdate, error) {
 	all, err := r.db.listUpdates()
@@ -55,8 +61,12 @@ func NewEvaluationRepository(db *DB) repository.EvaluationRepository {
 func (r *evaluationRepository) Get(key string) (*model.AgentEvaluation, error) {
 	return r.db.getEval(key)
 }
-func (r *evaluationRepository) Put(e model.AgentEvaluation) error { return r.db.putEval(e) }
-func (r *evaluationRepository) List() ([]model.AgentEvaluation, error) { return r.db.listEvals() }
+func (r *evaluationRepository) Put(e model.AgentEvaluation) error {
+	return r.db.putEval(e)
+}
+func (r *evaluationRepository) List() ([]model.AgentEvaluation, error) {
+	return r.db.listEvals()
+}
 
 type improvementRepository struct{ db *DB }
 
@@ -65,7 +75,9 @@ func NewImprovementRepository(db *DB) repository.ImprovementRepository {
 	return &improvementRepository{db}
 }
 
-func (r *improvementRepository) PutFailure(f model.FailureCase) error { return r.db.putFailure(f) }
+func (r *improvementRepository) PutFailure(f model.FailureCase) error {
+	return r.db.putFailure(f)
+}
 func (r *improvementRepository) ListFailures() ([]model.FailureCase, error) {
 	return r.db.listFailures()
 }

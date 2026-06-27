@@ -39,7 +39,9 @@ type DB struct {
 }
 
 // NewDB returns a DB backed by the file at path ("" => in memory).
-func NewDB(path string) *DB { return &DB{path: path, snap: emptySnapshot()} }
+func NewDB(path string) *DB {
+	return &DB{path: path, snap: emptySnapshot()}
+}
 
 func (d *DB) ensureLoaded() error {
 	if d.loaded {
