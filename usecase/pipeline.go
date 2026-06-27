@@ -9,7 +9,7 @@ import (
 	"github.com/ZONO33LHD/anneal/domain/service"
 )
 
-// analyzeStep: detected -> analyzing (impact analysis).
+// analyzeStep: detected -> analyzing（影響分析）。
 func (e *engine) analyzeStep(ctx context.Context, rec model.DependencyUpdate) (model.DependencyUpdate, error) {
 	impact := e.analyzeImpact(ctx, rec)
 	next, err := rec.Transition(model.StateAnalyzing, "impact analysis complete")
@@ -22,7 +22,7 @@ func (e *engine) analyzeStep(ctx context.Context, rec model.DependencyUpdate) (m
 	return next, nil
 }
 
-// createPRStep: pr_creating -> pr_created (apply bump, compose + open PR).
+// createPRStep: pr_creating -> pr_created（バージョン更新の適用、PR の作成とオープン）。
 func (e *engine) createPRStep(ctx context.Context, rec model.DependencyUpdate) (model.DependencyUpdate, error) {
 	var changed []string
 	if eco := e.ecosystems.ByID(rec.Ecosystem); eco != nil && rec.RepoPath != "" {
@@ -72,7 +72,7 @@ func (e *engine) createPRStep(ctx context.Context, rec model.DependencyUpdate) (
 	return next, nil
 }
 
-// ciStep: ci_running -> ci_passed | ci_failed.
+// ciStep: ci_running -> ci_passed | ci_failed。
 func (e *engine) ciStep(ctx context.Context, rec model.DependencyUpdate) (model.DependencyUpdate, error) {
 	attempt := 0
 	if rec.CI != nil {
@@ -107,7 +107,7 @@ func (e *engine) ciStep(ctx context.Context, rec model.DependencyUpdate) (model.
 	return next, nil
 }
 
-// fixStep: ci_failed -> fixing | awaiting_review.
+// fixStep: ci_failed -> fixing | awaiting_review。
 func (e *engine) fixStep(ctx context.Context, rec model.DependencyUpdate) (model.DependencyUpdate, error) {
 	logSummary, attempts := "unknown failure", 0
 	if rec.CI != nil {
@@ -115,7 +115,7 @@ func (e *engine) fixStep(ctx context.Context, rec model.DependencyUpdate) (model
 	}
 	category, fixable := service.ClassifyCIFailure(logSummary)
 
-	// Stop self-fixing after repeated failures; hand to a human.
+	// 失敗が繰り返された場合は自己修復を止め、人間に引き継ぐ。
 	if attempts >= 2 {
 		next, err := rec.Transition(model.StateAwaitingReview, "repeated CI failures → human")
 		if err != nil {

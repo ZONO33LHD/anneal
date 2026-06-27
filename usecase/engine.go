@@ -11,8 +11,8 @@ import (
 	"github.com/ZONO33LHD/anneal/domain/service"
 )
 
-// EngineUsecase advances dependency-update records through the lifecycle. The
-// single discipline is: read a record, move it one step, write it back.
+// EngineUsecase は依存関係更新レコードをライフサイクルに沿って進める。
+// 単一の規律は「レコードを読み取り→1ステップ進める→書き戻す」。
 type EngineUsecase interface {
 	Dispatch(ctx context.Context, rec model.DependencyUpdate) (bool, model.DependencyUpdate, error)
 	Tick(ctx context.Context) (int, error)
@@ -32,12 +32,13 @@ type engine struct {
 	log          gateway.Logger
 
 	lowScoreThreshold float64
-	// simulate auto-advances human gates and CI (mock mode) so the full lifecycle
-	// runs locally; in real mode those boundaries wait for webhooks/reconcile.
+	// simulate は人間承認ゲートと CI を自動で進める（モックモード）。これにより
+	// ライフサイクル全体をローカルで実行できる。実モードではこれらの境界は
+	// webhook/reconcile を待つ。
 	simulate bool
 }
 
-// NewEngineUsecase wires the engine.
+// NewEngineUsecase はエンジンを組み立てる。
 func NewEngineUsecase(
 	updates repository.UpdateRepository,
 	evals repository.EvaluationRepository,
@@ -61,8 +62,8 @@ var scoreStates = map[model.State]bool{
 	model.StateRegressed: true, model.StateClosed: true,
 }
 
-// Dispatch advances a single record exactly one meaningful step, persists it, and
-// recomputes its evaluation. On error the record is moved to the error state.
+// Dispatch は単一のレコードを意味のある1ステップだけ進めて永続化し、
+// その評価を再計算する。エラー時はレコードを error 状態へ移す。
 func (e *engine) Dispatch(ctx context.Context, rec model.DependencyUpdate) (bool, model.DependencyUpdate, error) {
 	next, moved, err := e.advance(ctx, rec)
 	if err != nil {
@@ -81,7 +82,7 @@ func (e *engine) Dispatch(ctx context.Context, rec model.DependencyUpdate) (bool
 	return true, next, nil
 }
 
-// Tick advances every active record one step.
+// Tick はすべてのアクティブなレコードを1ステップ進める。
 func (e *engine) Tick(ctx context.Context) (int, error) {
 	active, err := e.updates.ListActive()
 	if err != nil {
@@ -100,7 +101,7 @@ func (e *engine) Tick(ctx context.Context) (int, error) {
 	return changed, nil
 }
 
-// Drive runs the lifecycle to a standstill (used by demo).
+// Drive はライフサイクルを停止状態になるまで実行する（デモで使用）。
 func (e *engine) Drive(ctx context.Context, maxRounds int) error {
 	for range maxRounds {
 		changed, err := e.Tick(ctx)
@@ -115,8 +116,8 @@ func (e *engine) Drive(ctx context.Context, maxRounds int) error {
 	return nil
 }
 
-// Reconcile is the catch-up loop for records left behind by missed events. In
-// local mode the store is the source of truth, so it is a single tick.
+// Reconcile はイベント取りこぼしで取り残されたレコードを追いつかせるループ。
+// ローカルモードではストアが信頼できる情報源なので、これは単一の tick となる。
 func (e *engine) Reconcile(ctx context.Context) (int, error) {
 	changed, err := e.Tick(ctx)
 	if err != nil {
@@ -210,11 +211,11 @@ func (e *engine) advance(ctx context.Context, rec model.DependencyUpdate) (model
 		return wrap(rec.Transition(model.StateDone, "no regression detected"))
 
 	default:
-		return rec, false, nil // terminal / on_hold / error
+		return rec, false, nil // terminal / on_hold / error（終端・保留・エラー）
 	}
 }
 
-// wrap adapts a (record, error) step into the advance signature.
+// wrap は (record, error) のステップを advance のシグネチャに適合させる。
 func wrap(next model.DependencyUpdate, err error) (model.DependencyUpdate, bool, error) {
 	if err != nil {
 		return next, false, err
@@ -247,8 +248,8 @@ func (e *engine) maybeScore(rec model.DependencyUpdate) {
 	}
 }
 
-// recordIfLowScore persists a finalized below-threshold evaluation as a failure
-// case (idempotent: at most one per update_key) so the Annealing Loop can learn.
+// recordIfLowScore は確定した閾値未満の評価を失敗ケースとして永続化し
+// （冪等: update_key ごとに最大1件）、Annealing Loop が学習できるようにする。
 func (e *engine) recordIfLowScore(rec model.DependencyUpdate, eval model.AgentEvaluation) {
 	if eval.TotalScore >= e.lowScoreThreshold {
 		return

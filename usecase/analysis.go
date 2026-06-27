@@ -11,8 +11,8 @@ import (
 	"github.com/ZONO33LHD/anneal/domain/service"
 )
 
-// analyzeImpact locates usage sites (via the scanner port) and derives risk and
-// confidence (domain rules). The LLM only adds a human-readable summary.
+// analyzeImpact は（scanner ポート経由で）使用箇所を特定し、リスクと
+// 確信度（ドメインルール）を導出する。LLM は人間が読めるサマリーを付け足すだけ。
 func (e *engine) analyzeImpact(ctx context.Context, rec model.DependencyUpdate) model.ImpactAnalysis {
 	usage := e.scanner.UsageSites(rec.RepoPath, rec.PackageName)
 	breaking := rec.UpdateType == model.Major
@@ -41,7 +41,7 @@ func (e *engine) analyzeImpact(ctx context.Context, rec model.DependencyUpdate) 
 	}
 }
 
-// ciFailureSummary asks the LLM to describe a CI failure (enrichment only).
+// ciFailureSummary は CI 失敗の説明を LLM に依頼する（補足情報の付与のみ）。
 func (e *engine) ciFailureSummary(ctx context.Context, logSummary string) string {
 	out, _ := e.llm.Generate(ctx, gateway.LLMRequest{
 		Prompt:      "[ci-summary] Summarize this CI failure and whether it is mechanically fixable:\n" + logSummary,
@@ -55,8 +55,8 @@ func (e *engine) ciFailureSummary(ctx context.Context, logSummary string) string
 
 var branchUnsafe = regexp.MustCompile(`[^a-zA-Z0-9._-]+`)
 
-// composePR builds the PR title, body, and branch. The prose summary is
-// LLM-enriched; everything else is deterministic.
+// composePR は PR のタイトル・本文・ブランチを組み立てる。文章のサマリーは
+// LLM で補強されるが、それ以外はすべて決定論的。
 func (e *engine) composePR(ctx context.Context, rec model.DependencyUpdate, changed []string) (title, body, branch string) {
 	pkg := branchUnsafe.ReplaceAllString(rec.PackageName, "-")
 	branch = fmt.Sprintf("anneal/%s/%s-%s", rec.Ecosystem, pkg, rec.TargetVersion)

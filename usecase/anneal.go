@@ -13,7 +13,7 @@ import (
 	"github.com/ZONO33LHD/anneal/domain/repository"
 )
 
-// AnnealUsecase runs the self-improvement (Annealing) loop.
+// AnnealUsecase は自己改善（Annealing）ループを実行する。
 type AnnealUsecase interface {
 	MaybeAnneal(ctx context.Context) error
 }
@@ -28,7 +28,7 @@ type annealUsecase struct {
 	threshold    float64
 }
 
-// NewAnnealUsecase wires the Annealing loop.
+// NewAnnealUsecase は Annealing ループを組み立てる。
 func NewAnnealUsecase(
 	evals repository.EvaluationRepository,
 	improvements repository.ImprovementRepository,
@@ -41,8 +41,8 @@ func NewAnnealUsecase(
 	return &annealUsecase{evals, improvements, llm, notifier, log, window, threshold}
 }
 
-// MaybeAnneal fires the loop when the rolling average of the last `window`
-// finalized scores drops below threshold.
+// MaybeAnneal は直近 `window` 件の確定スコアの移動平均が threshold を
+// 下回ったときにループを起動する。
 func (a *annealUsecase) MaybeAnneal(ctx context.Context) error {
 	avg, sampled, err := a.rollingAverage()
 	if err != nil {
@@ -84,8 +84,8 @@ func (a *annealUsecase) rollingAverage() (avg float64, sampled int, err error) {
 	return float64(int(avg*10)) / 10, len(finals), nil
 }
 
-// run reads failure cases and generates an improvement candidate via the LLM.
-// Adoption via A/B is out of scope for this build.
+// run は失敗ケースを読み取り、LLM を介して改善候補を生成する。
+// A/B による採用はこのビルドの対象外。
 func (a *annealUsecase) run(ctx context.Context, average float64) error {
 	failures, err := a.improvements.ListFailures()
 	if err != nil {

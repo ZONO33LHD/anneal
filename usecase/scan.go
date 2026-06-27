@@ -1,6 +1,6 @@
-// Package usecase holds the application logic. It orchestrates domain services
-// and the ports (repository/gateway); it never imports infrastructure
-// (dependency rule: usecase -> domain).
+// Package usecase はアプリケーションロジックを保持する。ドメインサービスと
+// ポート（repository/gateway）をオーケストレーションし、インフラストラクチャを
+// import することは決してない（依存ルール: usecase -> domain）。
 package usecase
 
 import (
@@ -15,13 +15,13 @@ import (
 	"github.com/ZONO33LHD/anneal/domain/service"
 )
 
-// ScanResult summarizes a scan.
+// ScanResult はスキャン結果を要約する。
 type ScanResult struct {
 	Created []model.DependencyUpdate
 	Skipped int
 }
 
-// ScanUsecase finds upgrade candidates and creates detected records.
+// ScanUsecase はアップグレード候補を見つけ、detected レコードを作成する。
 type ScanUsecase interface {
 	Run(ctx context.Context, repoArg, repository string) (ScanResult, error)
 }
@@ -35,7 +35,7 @@ type scanUsecase struct {
 	log        gateway.Logger
 }
 
-// NewScanUsecase wires the scan usecase.
+// NewScanUsecase は scan ユースケースを組み立てる。
 func NewScanUsecase(
 	updates repository.UpdateRepository,
 	metadata gateway.MetadataSource,
@@ -47,8 +47,8 @@ func NewScanUsecase(
 	return &scanUsecase{updates, metadata, ecosystems, repoConfig, notifier, log}
 }
 
-// Run scans a repository and creates detected records idempotently. Duplicate
-// prevention: an update_key with an existing active record is skipped.
+// Run はリポジトリをスキャンし、detected レコードを冪等に作成する。重複防止:
+// 既存のアクティブなレコードを持つ update_key はスキップされる。
 func (s *scanUsecase) Run(ctx context.Context, repoArg, repoName string) (ScanResult, error) {
 	repoPath, _ := filepath.Abs(repoArg)
 	if repoName == "" {
@@ -103,7 +103,7 @@ func (s *scanUsecase) consider(
 	}
 	key := model.UpdateKey(repoName, dep.Name, latest)
 	if active, _ := s.updates.GetActive(key); active != nil {
-		return nil, nil // do not create a duplicate active record
+		return nil, nil // 重複するアクティブなレコードは作成しない
 	}
 
 	updateType := model.ClassifyUpdate(dep.CurrentVersion, latest)
