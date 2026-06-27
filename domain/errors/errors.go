@@ -31,10 +31,14 @@ func (e *AppError) Error() string {
 	return fmt.Sprintf("%s: %s", e.Code, e.Message)
 }
 
-func (e *AppError) Unwrap() error { return e.Err }
+func (e *AppError) Unwrap() error {
+	return e.Err
+}
 
 // New builds an AppError.
-func New(code Code, message string) *AppError { return &AppError{Code: code, Message: message} }
+func New(code Code, message string) *AppError {
+	return &AppError{Code: code, Message: message}
+}
 
 // Wrap builds an AppError around a cause.
 func Wrap(err error, code Code, message string) *AppError {

@@ -57,12 +57,18 @@ var Transitions = map[State][]State{
 var terminalStates = map[State]bool{StateDone: true, StateClosed: true, StateSuperseded: true}
 
 // IsTerminal reports whether a state needs no further processing.
-func IsTerminal(s State) bool { return terminalStates[s] }
+func IsTerminal(s State) bool {
+	return terminalStates[s]
+}
 
 // IsActive reports whether a record is still in flight. Duplicate prevention uses
 // this: a new record is not created for an update_key with an active record.
 // error counts as active because it is retryable.
-func IsActive(s State) bool { return !IsTerminal(s) }
+func IsActive(s State) bool {
+	return !IsTerminal(s)
+}
 
 // CanTransition reports whether from->to is an allowed move.
-func CanTransition(from, to State) bool { return slices.Contains(Transitions[from], to) }
+func CanTransition(from, to State) bool {
+	return slices.Contains(Transitions[from], to)
+}

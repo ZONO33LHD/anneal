@@ -91,4 +91,6 @@ func ClassifyUpdate(current, target string) UpdateType {
 }
 
 // IsUpgrade reports whether target is strictly newer than current.
-func IsUpgrade(current, target string) bool { return CompareVersions(target, current) > 0 }
+func IsUpgrade(current, target string) bool {
+	return CompareVersions(target, current) > 0
+}

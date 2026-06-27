@@ -80,33 +80,35 @@ type TransitionLog struct {
 // DependencyUpdate is the central aggregate. UpdateKey makes a given update
 // unique and is the basis for idempotency and duplicate prevention.
 type DependencyUpdate struct {
-	UpdateKey         string          `json:"update_key"`
-	Repository        string          `json:"repository"`
-	RepoPath          string          `json:"repoPath,omitempty"`
-	Ecosystem         Ecosystem       `json:"ecosystem"`
-	PackageName       string          `json:"package_name"`
-	CurrentVersion    string          `json:"current_version"`
-	TargetVersion     string          `json:"target_version"`
-	UpdateType        UpdateType      `json:"update_type"`
-	IsDevDependency   bool            `json:"is_dev_dependency"`
-	Priority          Priority        `json:"priority"`
-	RiskLevel         RiskLevel       `json:"risk_level"`
-	Status            State           `json:"status"`
-	AgentVersion      string          `json:"agent_version"`
-	CVE               *CVEInfo        `json:"cve,omitempty"`
-	Impact            *ImpactAnalysis `json:"impact,omitempty"`
-	CI                *CIResult       `json:"ci,omitempty"`
-	PullRequestURL    string          `json:"pull_request_url,omitempty"`
-	PullRequestNumber int             `json:"pull_request_number,omitempty"`
-	Branch            string          `json:"branch,omitempty"`
-	ReviewCommentCount *int           `json:"reviewCommentCount,omitempty"`
-	History           []TransitionLog `json:"history"`
-	CreatedAt         string          `json:"created_at"`
-	UpdatedAt         string          `json:"updated_at"`
+	UpdateKey          string          `json:"update_key"`
+	Repository         string          `json:"repository"`
+	RepoPath           string          `json:"repoPath,omitempty"`
+	Ecosystem          Ecosystem       `json:"ecosystem"`
+	PackageName        string          `json:"package_name"`
+	CurrentVersion     string          `json:"current_version"`
+	TargetVersion      string          `json:"target_version"`
+	UpdateType         UpdateType      `json:"update_type"`
+	IsDevDependency    bool            `json:"is_dev_dependency"`
+	Priority           Priority        `json:"priority"`
+	RiskLevel          RiskLevel       `json:"risk_level"`
+	Status             State           `json:"status"`
+	AgentVersion       string          `json:"agent_version"`
+	CVE                *CVEInfo        `json:"cve,omitempty"`
+	Impact             *ImpactAnalysis `json:"impact,omitempty"`
+	CI                 *CIResult       `json:"ci,omitempty"`
+	PullRequestURL     string          `json:"pull_request_url,omitempty"`
+	PullRequestNumber  int             `json:"pull_request_number,omitempty"`
+	Branch             string          `json:"branch,omitempty"`
+	ReviewCommentCount *int            `json:"reviewCommentCount,omitempty"`
+	History            []TransitionLog `json:"history"`
+	CreatedAt          string          `json:"created_at"`
+	UpdatedAt          string          `json:"updated_at"`
 }
 
 // IsSecurityDriven reports whether this update carries an advisory.
-func (u *DependencyUpdate) IsSecurityDriven() bool { return u.CVE != nil }
+func (u *DependencyUpdate) IsSecurityDriven() bool {
+	return u.CVE != nil
+}
 
 // UpdateKey builds the canonical unique key: repository + package + target.
 func UpdateKey(repository, packageName, targetVersion string) string {

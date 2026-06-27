@@ -22,10 +22,14 @@ var seqCounter atomic.Int64
 // NextSeq returns a monotonic sequence number for stable ordering of events
 // within a process (used to pick the most recent evaluations reliably even when
 // wall-clock timestamps collide).
-func NextSeq() int64 { return seqCounter.Add(1) }
+func NextSeq() int64 {
+	return seqCounter.Add(1)
+}
 
 // NowString is the current time as an RFC3339 string.
-func NowString() string { return time.Now().UTC().Format(time.RFC3339Nano) }
+func NowString() string {
+	return time.Now().UTC().Format(time.RFC3339Nano)
+}
 
 var slugInvalid = regexp.MustCompile(`[^a-z0-9._/-]+`)
 
