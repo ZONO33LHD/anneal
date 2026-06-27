@@ -185,13 +185,13 @@ stateDiagram-v2
     detected --> superseded: 同一依存の上位候補に統合
     fixing --> on_hold: CI失敗が連続 (NF-009)
     on_hold --> awaiting_review: 人間判断へ
+    detected --> error
+    analyzing --> error
+    pr_creating --> error
     note right of error
       どの状態からも例外時は error へ。
       リトライ可能(NF-007)・冪等(NF-021)
     end note
-    detected --> error
-    analyzing --> error
-    pr_creating --> error
     done --> [*]
     closed --> [*]
     regressed --> awaiting_review: ロールバックPR等を人間へ
