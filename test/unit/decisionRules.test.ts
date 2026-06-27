@@ -12,7 +12,7 @@ const lowImpact: ImpactAnalysis = {
   summary: 's',
 };
 
-describe('decision rules (10章)', () => {
+describe('decision rules', () => {
   it('auto-approves patch updates', () => {
     const d = decide(makeUpdate({ update_type: 'patch', impact: lowImpact }));
     expect(d.decision).toBe('auto');

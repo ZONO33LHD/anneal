@@ -9,7 +9,7 @@ interface Rule {
   patterns: RegExp[];
 }
 
-/** Keyword rules for the 5 failure categories (9.4). Checked in order. */
+/** Keyword rules for the failure categories. Checked in order. */
 const RULES: Rule[] = [
   {
     category: 'Dependency Conflict',
@@ -40,9 +40,9 @@ export interface CiFailureAnalysis {
 }
 
 /**
- * Classify a CI failure (F-023〜F-026) from its log summary. Deterministic
- * keyword rules decide category + fixability; the LLM provides a human summary
- * (Should: CI failure log AI summary).
+ * Classify a CI failure from its log summary. Deterministic keyword rules
+ * decide category + fixability; the LLM provides a human-readable summary so
+ * reviewers can quickly understand why CI broke.
  */
 export async function classifyCiFailure(
   logSummary: string,

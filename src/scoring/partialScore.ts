@@ -4,7 +4,7 @@ import { now } from '../util/clock.js';
 import { genId, nextSeq } from '../util/ids.js';
 import { computeComponents, computeTotal } from './scorer.js';
 
-/** Statuses at which the score is considered final (9.5). */
+/** Statuses at which the score is considered final. */
 const FINAL_STATUSES = ['merged', 'monitoring_regression', 'done', 'regressed', 'closed'];
 
 function scoreStatus(u: DependencyUpdate): ScoreStatus {

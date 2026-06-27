@@ -1,7 +1,7 @@
 import type { DependencyUpdate } from '../domain/dependencyUpdate.js';
 import { SCORE_WEIGHTS } from '../domain/evaluation.js';
 
-/** Individual component scores, each 0..100 (9.5). */
+/** Individual component scores, each 0..100. */
 export interface ScoreComponents {
   ci: number;
   review: number;
@@ -96,7 +96,7 @@ export function computeComponents(u: DependencyUpdate): ScoreComponents {
   };
 }
 
-/** Weighted total (9.5). Regression is tracked separately, not in the total. */
+/** Weighted total. Regression is tracked separately, not in the total. */
 export function computeTotal(c: ScoreComponents): number {
   const total =
     c.ci * SCORE_WEIGHTS.ci +

@@ -9,7 +9,7 @@ import type { Llm } from '../providers/llm/llm.js';
 
 const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'vendor', '.anneal']);
 const TEXT_EXT = /\.(ts|tsx|js|jsx|mjs|cjs|go|json)$/;
-const MAX_FILES = 500; // NF-020: bound the scan
+const MAX_FILES = 500; // bound the scan so large repos stay fast
 
 async function walk(dir: string, root: string, acc: string[]): Promise<void> {
   if (acc.length >= MAX_FILES) return;
@@ -38,9 +38,9 @@ function usagePattern(packageName: string): RegExp {
 }
 
 /**
- * Impact analysis (F-007〜F-012). Deterministically locates usage sites and
- * derives a risk level, then asks the LLM for a one-paragraph human summary
- * (enrichment only — the risk decision itself is rule-based, 6.1 backstop).
+ * Impact analysis. Deterministically locates usage sites and derives a risk
+ * level, then asks the LLM for a one-paragraph human summary (enrichment only —
+ * the risk decision itself stays rule-based so it is predictable and auditable).
  */
 export async function analyzeImpact(
   update: DependencyUpdate,

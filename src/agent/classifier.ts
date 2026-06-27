@@ -2,7 +2,7 @@ import type { CveInfo, Priority } from '../domain/dependencyUpdate.js';
 import type { UpdateType } from '../util/semver.js';
 
 /**
- * Update priority (F-006 / 9.1 優先度分類):
+ * Update priority classification:
  *  🔴 Critical: exploitable CVE / exploit published
  *  🟠 High:     high+ CVE
  *  🟡 Medium:   ordinary patch / minor

@@ -1,6 +1,6 @@
 import type { DependencyUpdate } from '../domain/dependencyUpdate.js';
 
-/** Packages whose updates always need a human (auth/payment/security, 10章). */
+/** Packages whose updates always need a human (auth/payment/security). */
 const SENSITIVE_KEYWORDS = [
   'auth',
   'passport',
@@ -26,9 +26,9 @@ function isSensitive(name: string): boolean {
 }
 
 /**
- * Encodes the decision flowchart (10章). Returns whether the PR can proceed
+ * Encodes the auto-vs-human decision flow. Returns whether the PR can proceed
  * automatically toward CI/review, or must wait for explicit human approval.
- * Low-quality model output is caught here and routed to a human (6.1 backstop).
+ * Low-quality model output is caught here and routed to a human as a safety net.
  */
 export function decide(update: DependencyUpdate): Decision {
   const reasons: string[] = [];

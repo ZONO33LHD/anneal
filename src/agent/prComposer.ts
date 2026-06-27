@@ -14,7 +14,7 @@ export function branchName(update: DependencyUpdate): string {
   return `anneal/${update.ecosystem}/${pkg}-${update.target_version}`;
 }
 
-/** PR title (F-017). security(deps) for CVE fixes, chore(deps) otherwise. */
+/** PR title: security(deps) for CVE fixes, chore(deps) otherwise. */
 export function prTitle(update: DependencyUpdate): string {
   const scope = isSecurityUpdate(update.cve) ? 'security' : 'chore';
   if (update.cve) {
@@ -24,8 +24,8 @@ export function prTitle(update: DependencyUpdate): string {
 }
 
 /**
- * Compose the PR (F-017/F-018). Includes summary, reason, impact, changes, and an
- * Anneal evaluation footer with Confidence/Risk. Prose summary is LLM-enriched.
+ * Compose the PR. Includes summary, reason, impact, changes, and an Anneal
+ * evaluation footer with Confidence/Risk. Prose summary is LLM-enriched.
  */
 export async function composePr(
   update: DependencyUpdate,
