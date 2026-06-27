@@ -10,9 +10,9 @@ export interface DetectedDependency {
 
 /**
  * An ecosystem knows how to read a manifest and apply a version bump to the
- * relevant files (F-003, F-013〜F-014). "What is the latest version" and "is
- * there a CVE" are intentionally NOT here — those come from a MetadataSource so
- * the file-handling logic stays deterministic and unit-testable.
+ * relevant files. "What is the latest version" and "is there a CVE" are
+ * intentionally NOT here — those come from a MetadataSource so the
+ * file-handling logic stays deterministic and unit-testable.
  */
 export interface Ecosystem {
   readonly id: EcosystemId;

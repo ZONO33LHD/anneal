@@ -4,7 +4,7 @@ import { parse } from 'yaml';
 import { log } from '../util/logger.js';
 
 /**
- * Per-repository configuration committed as `.anneal.yml` (14章, NF-012/NF-013).
+ * Per-repository configuration committed as `.anneal.yml`.
  * Repo settings override the organisation defaults represented here.
  */
 export interface RepoConfig {

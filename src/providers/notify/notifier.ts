@@ -1,5 +1,5 @@
-/** Notification levels map to spec needs: priority for CVEs (F-019/F-050),
- * approval for human gate (F-055), success for improvements (F-054). */
+/** Notification levels: priority for CVEs, approval for the human gate,
+ * success for improvements. */
 export type NotifyLevel = 'info' | 'priority' | 'approval' | 'success';
 
 export interface NotifyMessage {

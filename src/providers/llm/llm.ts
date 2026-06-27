@@ -1,8 +1,8 @@
 /**
- * LLM abstraction (6.1). The default model is the cheapest tier; quality wobble
- * is backstopped by deterministic rules + human approval (11章). The agent uses
- * the LLM only for prose/enrichment (PR bodies, log summaries, improvement
- * hypotheses) so the pipeline still works end-to-end with the mock.
+ * LLM abstraction. The default model is the cheapest tier; quality wobble is
+ * backstopped by deterministic rules + human approval. The agent uses the LLM
+ * only for prose/enrichment (PR bodies, log summaries, improvement hypotheses)
+ * so the pipeline still works end-to-end with the mock.
  */
 export interface LlmRequest {
   system?: string;

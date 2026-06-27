@@ -3,8 +3,9 @@ import type { Llm, LlmRequest } from './llm.js';
 
 /**
  * Real Gemini implementation. `@google/genai` is an optional dependency and is
- * imported dynamically so the mock path works without it installed (NF: offline
- * E2E). Defaults to the cheapest model per spec 6.1.
+ * imported dynamically so the mock path works without it installed (keeps
+ * offline E2E runs dependency-free). Defaults to the cheapest model to keep
+ * costs low.
  */
 export class GeminiLlm implements Llm {
   readonly name = 'gemini';

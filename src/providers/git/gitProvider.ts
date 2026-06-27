@@ -43,9 +43,8 @@ export interface PullRequestRef {
 }
 
 /**
- * Git hosting abstraction (F-013〜F-017, F-021〜F-022). Real mode talks to GitHub
- * via Octokit; mock mode returns scripted results so the whole lifecycle runs
- * locally without a token.
+ * Git hosting abstraction. Real mode talks to GitHub via Octokit; mock mode
+ * returns scripted results so the whole lifecycle runs locally without a token.
  */
 export interface GitProvider {
   readonly name: string;

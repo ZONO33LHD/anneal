@@ -13,7 +13,7 @@ import type {
  * Scripted git provider for local demos. PR numbers are derived from the branch
  * so they are stable across stateless ticks. CI outcome is deterministic:
  * when `shouldFailFirst` is set, attempt 0 fails (fixable) and later attempts
- * pass — reproducing the "CI fails → self-heal → passes" story (17章-2).
+ * pass — reproducing the "CI fails → self-heal → passes" story.
  */
 export class MockGitProvider implements GitProvider {
   readonly name = 'mock';

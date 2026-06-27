@@ -7,7 +7,7 @@ const BADGE: Record<NotifyLevel, string> = {
   success: '✅ SUCCESS',
 };
 
-/** Default notifier: prints a Slack-like card to the console (F-049〜F-055). */
+/** Default notifier: prints a Slack-like card to the console. */
 export class ConsoleNotifier implements Notifier {
   readonly name = 'console';
 
