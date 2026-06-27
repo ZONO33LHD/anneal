@@ -68,7 +68,9 @@ func (o *OSV) Advisories(ctx context.Context, eco model.Ecosystem, name, current
 	if err != nil {
 		return nil, nil
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	if resp.StatusCode != http.StatusOK {
 		return nil, nil
 	}
@@ -129,7 +131,9 @@ func (o *OSV) getJSON(ctx context.Context, u string, out any) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("status %d", resp.StatusCode)
 	}

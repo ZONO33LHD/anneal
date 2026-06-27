@@ -56,7 +56,9 @@ func (g *GitHub) do(ctx context.Context, method, url string, body, out any) erro
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	if resp.StatusCode >= 300 {
 		return fmt.Errorf("github: status %d", resp.StatusCode)
 	}
