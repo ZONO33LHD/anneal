@@ -15,27 +15,27 @@ import (
 // fails (fixable) and later attempts pass — reproducing the
 // "CI fails -> self-heal -> passes" story.
 type Mock struct {
-	prCounter int64
+	prCounter atomic.Int64
 }
 
 // NewMock returns a mock git provider.
 func NewMock() gateway.Git { return &Mock{} }
 
-func (Mock) Name() string { return "mock" }
+func (*Mock) Name() string { return "mock" }
 
 func (m *Mock) CreateBranchAndPR(_ context.Context, opts gateway.CreatePROptions) (gateway.PRRef, error) {
-	n := atomic.AddInt64(&m.prCounter, 1) + 1000
+	n := m.prCounter.Add(1) + 1000
 	url := fmt.Sprintf("https://github.com/%s/pull/%d", opts.Repository, n)
 	fmt.Printf("ℹ mock: opened PR branch=%s url=%s\n", opts.Branch, url)
 	return gateway.PRRef{Number: int(n), URL: url}, nil
 }
 
-func (Mock) PushFix(_ context.Context, opts gateway.PushFixOptions) error {
+func (*Mock) PushFix(_ context.Context, opts gateway.PushFixOptions) error {
 	fmt.Printf("ℹ mock: pushed fix commit pr=%d files=%v\n", opts.PRNumber, opts.ChangedFiles)
 	return nil
 }
 
-func (Mock) CheckCI(_ context.Context, opts gateway.CICheckOptions) (gateway.CICheck, error) {
+func (*Mock) CheckCI(_ context.Context, opts gateway.CICheckOptions) (gateway.CICheck, error) {
 	if opts.ShouldFailFirst && opts.Attempt == 0 {
 		branch := strings.ReplaceAll(opts.Branch, "/", "-")
 		return gateway.CICheck{
