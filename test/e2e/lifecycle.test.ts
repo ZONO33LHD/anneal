@@ -31,7 +31,7 @@ describe('full lifecycle (mock)', () => {
     expect(result.created.length).toBeGreaterThanOrEqual(6);
   });
 
-  it('is idempotent: re-scanning creates no duplicate active records (NF-008)', async () => {
+  it('is idempotent: re-scanning creates no duplicate active records', async () => {
     await scanRepository(ctx, work, 'acme/sample-repo');
     const second = await scanRepository(ctx, work, 'acme/sample-repo');
     expect(second.created).toHaveLength(0);

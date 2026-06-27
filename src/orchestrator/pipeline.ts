@@ -7,7 +7,7 @@ import { transition } from './stateMachine.js';
 import type { AnnealContext } from './context.js';
 import { log } from '../util/logger.js';
 
-/** detected → analyzing: run impact analysis (F-007〜F-012). */
+/** detected → analyzing: run impact analysis. */
 export async function analyzeStep(
   ctx: AnnealContext,
   record: DependencyUpdate,
@@ -21,7 +21,7 @@ export async function analyzeStep(
   });
 }
 
-/** pr_creating → pr_created: apply the bump, compose + open the PR (F-013〜F-018). */
+/** pr_creating → pr_created: apply the bump, compose + open the PR. */
 export async function createPrStep(
   ctx: AnnealContext,
   record: DependencyUpdate,
@@ -62,7 +62,7 @@ export async function createPrStep(
   });
 }
 
-/** ci_running → ci_passed | ci_failed (T4). */
+/** ci_running → ci_passed | ci_failed. */
 export async function ciStep(
   ctx: AnnealContext,
   record: DependencyUpdate,
@@ -90,7 +90,7 @@ export async function ciStep(
   });
 }
 
-/** ci_failed → fixing | awaiting_review (F-023〜F-026). */
+/** ci_failed → fixing | awaiting_review. */
 export async function fixStep(
   ctx: AnnealContext,
   record: DependencyUpdate,
@@ -99,7 +99,7 @@ export async function fixStep(
   const analysis = await classifyCiFailure(logSummary, ctx.llm);
   const attempts = record.ci?.attempts ?? 0;
 
-  // NF-009: stop self-fixing after repeated failures.
+  // Stop self-fixing after repeated failures and hand off to a human.
   if (attempts >= 2) {
     log.warn('on_hold: repeated CI failures', { key: record.update_key });
     // ci_failed can't go to on_hold directly; route via awaiting_review.

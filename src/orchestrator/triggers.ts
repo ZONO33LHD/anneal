@@ -38,10 +38,10 @@ function simulatedComments(record: DependencyUpdate): number {
 }
 
 /**
- * Advance a single record exactly one meaningful step (6.2 single discipline).
- * Persists the new record and (re)computes its evaluation. Human gates and async
- * boundaries stop here in real mode; in simulate mode they auto-advance so the
- * full lifecycle is demonstrable.
+ * Advance a single record exactly one meaningful step. Persists the new record
+ * and (re)computes its evaluation. Human gates and async boundaries stop here
+ * in real mode; in simulate mode they auto-advance so the full lifecycle is
+ * demonstrable.
  */
 export async function dispatch(
   ctx: AnnealContext,
@@ -147,7 +147,7 @@ async function advance(
       return transition(record, 'monitoring_regression', 'merged');
 
     case 'monitoring_regression':
-      if (!ctx.simulate) return null; // closed by the regression scheduler (T8)
+      if (!ctx.simulate) return null; // closed by the regression scheduler
       return transition(record, 'done', 'no regression detected');
 
     default:

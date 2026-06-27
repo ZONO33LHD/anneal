@@ -16,9 +16,9 @@ export interface ScanResult {
 }
 
 /**
- * T1/T2: scan a repository, find upgrade candidates + advisories, and create
- * `detected` records idempotently. Duplicate prevention (NF-008/NF-021): an
- * update_key with an existing active record is skipped.
+ * Scan a repository, find upgrade candidates + advisories, and create
+ * `detected` records idempotently. Duplicate prevention: an update_key with an
+ * existing active record is skipped.
  */
 export async function scanRepository(
   ctx: AnnealContext,
@@ -65,7 +65,7 @@ export async function scanRepository(
 
       if (await ctx.store.getActiveUpdate(key)) {
         skipped += 1;
-        continue; // NF-008: do not create a duplicate active record
+        continue; // do not create a duplicate active record
       }
 
       const updateType = classifyUpdate(dep.currentVersion, latest);

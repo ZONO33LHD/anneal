@@ -5,8 +5,8 @@ import { log } from '../util/logger.js';
 
 /**
  * One tick: advance every active record one meaningful step. This is the unit
- * the Scheduler (T1) / reconcile loop (T9) invokes — read records, step the
- * state machine, write back.
+ * the scheduler / reconcile loop invokes — read records, step the state
+ * machine, write back.
  */
 export async function tick(ctx: AnnealContext): Promise<number> {
   const active = await ctx.store.listActiveUpdates();
@@ -30,7 +30,7 @@ export async function drive(ctx: AnnealContext, maxRounds = 100): Promise<void> 
   log.warn('drive: hit max rounds; some records may still be active');
 }
 
-/** Fire the Annealing Loop if the rolling score average dropped (T10). */
+/** Fire the Annealing Loop if the rolling score average dropped. */
 export async function maybeAnneal(ctx: AnnealContext): Promise<void> {
   const { fire, average, sampled } = await shouldFire(
     ctx.store,

@@ -5,8 +5,8 @@ import { now } from '../util/clock.js';
 import { log } from '../util/logger.js';
 
 /**
- * Persist a low-scoring case as a failure example (F-034) so the Annealing Loop
- * has material to learn from. Only finalized evaluations below threshold count.
+ * Persist a low-scoring case as a failure example so the Annealing Loop has
+ * material to learn from. Only finalized evaluations below threshold count.
  */
 export async function recordIfLowScore(
   store: Store,

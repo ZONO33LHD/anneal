@@ -21,7 +21,7 @@ program
 
 program
   .command('scan')
-  .description('Scan a repository for updates and create detected records (T1/T2)')
+  .description('Scan a repository for updates and create detected records')
   .argument('<repoPath>', 'path to the target repository')
   .option('-r, --repository <name>', 'logical repository name (owner/repo)')
   .action(async (repoPath: string, opts: { repository?: string }) => {
@@ -32,7 +32,7 @@ program
 
 program
   .command('tick')
-  .description('Advance every active record one step (T1 scheduler unit)')
+  .description('Advance every active record one step')
   .action(async () => {
     const ctx = makeContext(loadConfig());
     const changed = await tick(ctx);
@@ -42,7 +42,7 @@ program
 
 program
   .command('reconcile')
-  .description('Reconciliation loop: catch up records left behind by missed events (T9)')
+  .description('Reconciliation loop: catch up records left behind by missed events')
   .action(async () => {
     const ctx = makeContext(loadConfig());
     await reconcile(ctx);
@@ -51,7 +51,7 @@ program
 
 program
   .command('improve')
-  .description('Manually run the Annealing Loop score check (T10)')
+  .description('Manually run the Annealing Loop score check')
   .action(async () => {
     const ctx = makeContext(loadConfig());
     await maybeAnneal(ctx);
@@ -92,9 +92,9 @@ program.parseAsync(process.argv).catch((err) => {
 });
 
 /**
- * Hackathon demo (17章): copies the fixture to an isolated working dir, runs the
- * whole mock pipeline, and shows detection → PR → CI self-heal → scoring →
- * Annealing Loop. Uses a raised low-score threshold so the loop reliably fires.
+ * Demo: copies the fixture to an isolated working dir, runs the whole mock
+ * pipeline, and shows detection → PR → CI self-heal → scoring → Annealing Loop.
+ * Uses a raised low-score threshold so the loop reliably fires.
  */
 async function runDemo(): Promise<void> {
   setVerbose(true);

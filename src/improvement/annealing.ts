@@ -8,8 +8,8 @@ import { genId } from '../util/ids.js';
 import { log } from '../util/logger.js';
 
 /**
- * Decide whether the Annealing Loop should fire (F-032 / T10): the rolling
- * average of the last N finalized evaluations dropped below threshold.
+ * Decide whether the Annealing Loop should fire: the rolling average of the
+ * last N finalized evaluations dropped below threshold.
  */
 export async function shouldFire(
   store: Store,
@@ -27,9 +27,9 @@ export async function shouldFire(
 }
 
 /**
- * Run one Annealing iteration (F-035〜F-037, F-042): read failure cases, ask the
- * LLM for an improvement hypothesis and a concrete prompt/rule change, persist
- * the candidate, and notify. Adoption via A/B is out of scope for this build.
+ * Run one Annealing iteration: read failure cases, ask the LLM for an
+ * improvement hypothesis and a concrete prompt/rule change, persist the
+ * candidate, and notify. Adoption via A/B is out of scope for this build.
  */
 export async function runAnnealing(
   store: Store,
