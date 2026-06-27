@@ -1,7 +1,7 @@
 # Anneal per-repository configuration.
-baseBranch: main
-autoPrTypes:
+base_branch: main
+auto_pr_types:
   - patch
   - minor
 ignore: []
-regressionWindowDays: 7
+regression_window_days: 7
