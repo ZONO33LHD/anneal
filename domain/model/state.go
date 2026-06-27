@@ -2,9 +2,9 @@ package model
 
 import "slices"
 
-// State is a stage in the dependency-update lifecycle. The lifecycle is the
-// backbone of the system: every trigger reads a record, moves it one step along
-// this graph, and writes it back.
+// State は依存関係更新のライフサイクルにおける 1 段階である。このライフサイクルは
+// システムの背骨であり、すべてのトリガはレコードを読み取り、このグラフに沿って 1 ステップ
+// 進め、書き戻す。
 type State string
 
 const (
@@ -29,8 +29,8 @@ const (
 	StateError                State = "error"
 )
 
-// Transitions is the allowed-transition graph. A move not listed here is
-// rejected, which keeps the lifecycle from drifting into invalid states.
+// Transitions は許可された遷移のグラフである。ここに列挙されていない遷移は拒否され、
+// ライフサイクルが不正な状態へ逸脱するのを防ぐ。
 var Transitions = map[State][]State{
 	StateDetected:             {StateAnalyzing, StateSuperseded, StateError},
 	StateAnalyzing:            {StateAwaitingApproval, StatePRCreating, StateError},
@@ -50,25 +50,25 @@ var Transitions = map[State][]State{
 	StateDone:                 {},
 	StateClosed:               {},
 	StateSuperseded:           {},
-	// error is recoverable: a retry re-enters the pipeline.
+	// error は回復可能: リトライによってパイプラインに再投入される。
 	StateError: {StateDetected, StateAnalyzing, StatePRCreating, StateClosed},
 }
 
 var terminalStates = map[State]bool{StateDone: true, StateClosed: true, StateSuperseded: true}
 
-// IsTerminal reports whether a state needs no further processing.
+// IsTerminal は状態がこれ以上の処理を必要としないかどうかを返す。
 func IsTerminal(s State) bool {
 	return terminalStates[s]
 }
 
-// IsActive reports whether a record is still in flight. Duplicate prevention uses
-// this: a new record is not created for an update_key with an active record.
-// error counts as active because it is retryable.
+// IsActive はレコードがまだ処理中かどうかを返す。重複防止はこれを使う: アクティブな
+// レコードを持つ update_key に対しては新しいレコードを作成しない。error はリトライ
+// 可能なのでアクティブとみなす。
 func IsActive(s State) bool {
 	return !IsTerminal(s)
 }
 
-// CanTransition reports whether from->to is an allowed move.
+// CanTransition は from->to が許可された遷移かどうかを返す。
 func CanTransition(from, to State) bool {
 	return slices.Contains(Transitions[from], to)
 }

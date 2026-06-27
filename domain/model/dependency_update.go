@@ -2,7 +2,7 @@ package model
 
 import "fmt"
 
-// Ecosystem identifies a package ecosystem.
+// Ecosystem はパッケージのエコシステムを識別する。
 type Ecosystem string
 
 const (
@@ -10,7 +10,7 @@ const (
 	EcosystemGo  Ecosystem = "go"
 )
 
-// RiskLevel is the predicted blast radius of an update.
+// RiskLevel は更新の予測される影響範囲（blast radius）である。
 type RiskLevel string
 
 const (
@@ -19,7 +19,7 @@ const (
 	RiskHigh   RiskLevel = "high"
 )
 
-// Priority is the triage urgency of an update.
+// Priority は更新のトリアージ上の緊急度である。
 type Priority string
 
 const (
@@ -29,7 +29,7 @@ const (
 	PriorityLow      Priority = "low"
 )
 
-// CIFailureCategory classifies why a CI run failed.
+// CIFailureCategory は CI 実行が失敗した理由を分類する。
 type CIFailureCategory string
 
 const (
@@ -40,7 +40,7 @@ const (
 	FailUnknown            CIFailureCategory = "Unknown"
 )
 
-// CVEInfo describes an advisory attached to a security-driven update.
+// CVEInfo はセキュリティ起因の更新に紐づくアドバイザリを記述する。
 type CVEInfo struct {
 	ID               string `json:"id"`
 	Severity         string `json:"severity"` // critical|high|moderate|low
@@ -50,7 +50,7 @@ type CVEInfo struct {
 	Summary          string `json:"summary,omitempty"`
 }
 
-// ImpactAnalysis is the output of the impact-analysis stage.
+// ImpactAnalysis は影響分析ステージの出力である。
 type ImpactAnalysis struct {
 	UsageSites        []string  `json:"usage_sites"`
 	HasBreakingChange bool      `json:"has_breaking_change"`
@@ -60,7 +60,7 @@ type ImpactAnalysis struct {
 	Confidence        float64   `json:"confidence"` // 0..1
 }
 
-// CIResult is the latest CI outcome for the pull request.
+// CIResult はプルリクエストに対する最新の CI 結果である。
 type CIResult struct {
 	Status          string            `json:"status"` // running|passed|failed
 	FailureCategory CIFailureCategory `json:"failure_category,omitempty"`
@@ -69,7 +69,7 @@ type CIResult struct {
 	LogSummary      string            `json:"log_summary,omitempty"`
 }
 
-// TransitionLog is one entry in the immutable audit history of a record.
+// TransitionLog はレコードのイミュータブルな監査履歴における 1 エントリである。
 type TransitionLog struct {
 	From   State  `json:"from"`
 	To     State  `json:"to"`
@@ -77,8 +77,8 @@ type TransitionLog struct {
 	At     string `json:"at"`
 }
 
-// DependencyUpdate is the central aggregate. UpdateKey makes a given update
-// unique and is the basis for idempotency and duplicate prevention.
+// DependencyUpdate は中心となる集約（aggregate）である。UpdateKey は個々の更新を
+// 一意にし、冪等性と重複防止の基礎となる。
 type DependencyUpdate struct {
 	UpdateKey          string          `json:"update_key"`
 	Repository         string          `json:"repository"`
@@ -105,17 +105,17 @@ type DependencyUpdate struct {
 	UpdatedAt          string          `json:"updated_at"`
 }
 
-// IsSecurityDriven reports whether this update carries an advisory.
+// IsSecurityDriven はこの更新がアドバイザリを伴うかどうかを返す。
 func (u *DependencyUpdate) IsSecurityDriven() bool {
 	return u.CVE != nil
 }
 
-// UpdateKey builds the canonical unique key: repository + package + target.
+// UpdateKey は正規の一意キーを生成する: repository + package + target。
 func UpdateKey(repository, packageName, targetVersion string) string {
 	return Slug(repository) + "::" + Slug(packageName) + "::" + Slug(targetVersion)
 }
 
-// InvalidTransitionError is returned when a move is not allowed by the graph.
+// InvalidTransitionError はグラフ上で許可されていない遷移が行われたときに返される。
 type InvalidTransitionError struct{ From, To State }
 
 func (e InvalidTransitionError) Error() string {
@@ -128,9 +128,9 @@ func (u DependencyUpdate) clone() DependencyUpdate {
 	return cp
 }
 
-// Transition moves the record one step along the lifecycle, returning a NEW
-// record (immutable update) with the move appended to its audit history. A
-// same-state call is an idempotent no-op so redelivered events are safe.
+// Transition はレコードをライフサイクルに沿って 1 ステップ進め、その遷移を監査履歴に
+// 追加した新しいレコード（イミュータブルな更新）を返す。同一状態への呼び出しは冪等な
+// no-op であり、再配信されたイベントでも安全である。
 func (u DependencyUpdate) Transition(to State, reason string) (DependencyUpdate, error) {
 	if u.Status == to {
 		next := u.clone()
@@ -148,7 +148,7 @@ func (u DependencyUpdate) Transition(to State, reason string) (DependencyUpdate,
 	return next, nil
 }
 
-// ToError moves the record to the error state from anywhere; error is retry-safe.
+// ToError はどの状態からでもレコードをエラー状態へ移す。エラーはリトライ安全である。
 func (u DependencyUpdate) ToError(reason string) DependencyUpdate {
 	at := NowString()
 	next := u.clone()

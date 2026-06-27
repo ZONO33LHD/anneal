@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// UpdateType classifies the size of a version jump.
+// UpdateType はバージョン変化の大きさを分類する。
 type UpdateType string
 
 const (
@@ -15,7 +15,7 @@ const (
 	Major UpdateType = "major"
 )
 
-// SemVer is a parsed major.minor.patch triple.
+// SemVer はパース済みの major.minor.patch の三つ組である。
 type SemVer struct {
 	Major, Minor, Patch int
 }
@@ -25,7 +25,7 @@ var (
 	verCore     = regexp.MustCompile(`^(\d+)\.(\d+)\.(\d+)`)
 )
 
-// CleanVersion strips range operators and a leading v, returning a bare version.
+// CleanVersion は範囲演算子と先頭の v を取り除き、素のバージョンを返す。
 func CleanVersion(raw string) string {
 	s := rangePrefix.ReplaceAllString(strings.TrimSpace(raw), "")
 	s = strings.SplitN(s, "-", 2)[0]
@@ -33,7 +33,7 @@ func CleanVersion(raw string) string {
 	return s
 }
 
-// ParseSemVer parses a version string, returning ok=false if unparseable.
+// ParseSemVer はバージョン文字列をパースし、パースできない場合は ok=false を返す。
 func ParseSemVer(raw string) (SemVer, bool) {
 	m := verCore.FindStringSubmatch(CleanVersion(raw))
 	if m == nil {
@@ -45,7 +45,7 @@ func ParseSemVer(raw string) (SemVer, bool) {
 	return SemVer{maj, min, pat}, true
 }
 
-// CompareVersions returns -1/0/1 for a<b/a==b/a>b. Unparseable compare equal.
+// CompareVersions は a<b/a==b/a>b に対して -1/0/1 を返す。パース不能なものは等しいとみなす。
 func CompareVersions(a, b string) int {
 	pa, oka := ParseSemVer(a)
 	pb, okb := ParseSemVer(b)
@@ -73,7 +73,7 @@ func sign(n int) int {
 	}
 }
 
-// ClassifyUpdate classifies the jump from current to target.
+// ClassifyUpdate は current から target への変化を分類する。
 func ClassifyUpdate(current, target string) UpdateType {
 	c, okc := ParseSemVer(current)
 	t, okt := ParseSemVer(target)
@@ -90,7 +90,7 @@ func ClassifyUpdate(current, target string) UpdateType {
 	}
 }
 
-// IsUpgrade reports whether target is strictly newer than current.
+// IsUpgrade は target が current より厳密に新しいかどうかを返す。
 func IsUpgrade(current, target string) bool {
 	return CompareVersions(target, current) > 0
 }

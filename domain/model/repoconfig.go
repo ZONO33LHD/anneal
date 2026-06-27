@@ -2,8 +2,8 @@ package model
 
 import "strings"
 
-// RepoConfig is the per-repository policy committed as .anneal.yml. Repo settings
-// override the organisation defaults represented by DefaultRepoConfig.
+// RepoConfig は .anneal.yml としてコミットされるリポジトリごとのポリシーである。
+// リポジトリの設定は DefaultRepoConfig が表す組織のデフォルトを上書きする。
 type RepoConfig struct {
 	BaseBranch           string   `yaml:"base_branch"`
 	Ignore               []string `yaml:"ignore"`
@@ -11,7 +11,7 @@ type RepoConfig struct {
 	RegressionWindowDays int      `yaml:"regression_window_days"`
 }
 
-// DefaultRepoConfig returns the organisation default configuration.
+// DefaultRepoConfig は組織のデフォルト設定を返す。
 func DefaultRepoConfig() RepoConfig {
 	return RepoConfig{
 		BaseBranch:           "main",
@@ -21,7 +21,7 @@ func DefaultRepoConfig() RepoConfig {
 	}
 }
 
-// IsIgnored reports whether the package should be skipped per repo config.
+// IsIgnored はリポジトリ設定に従ってそのパッケージをスキップすべきかどうかを返す。
 func (c RepoConfig) IsIgnored(packageName string) bool {
 	for _, p := range c.Ignore {
 		prefix := strings.TrimSuffix(p, "*")

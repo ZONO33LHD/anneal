@@ -10,7 +10,7 @@ import (
 
 var idCounter atomic.Int64
 
-// NewID returns a readable, process-unique id like "run_lm0k3f-7".
+// NewID は "run_lm0k3f-7" のような可読でプロセス内一意な id を返す。
 func NewID(prefix string) string {
 	n := idCounter.Add(1)
 	stamp := strconv.FormatInt(time.Now().UnixNano(), 36)
@@ -19,21 +19,20 @@ func NewID(prefix string) string {
 
 var seqCounter atomic.Int64
 
-// NextSeq returns a monotonic sequence number for stable ordering of events
-// within a process (used to pick the most recent evaluations reliably even when
-// wall-clock timestamps collide).
+// NextSeq はプロセス内のイベントを安定して順序付けるための単調増加なシーケンス番号を
+// 返す（壁時計のタイムスタンプが衝突しても最新の評価を確実に選び出すために使う）。
 func NextSeq() int64 {
 	return seqCounter.Add(1)
 }
 
-// NowString is the current time as an RFC3339 string.
+// NowString は現在時刻を RFC3339 文字列として返す。
 func NowString() string {
 	return time.Now().UTC().Format(time.RFC3339Nano)
 }
 
 var slugInvalid = regexp.MustCompile(`[^a-z0-9._/-]+`)
 
-// Slug produces a stable, lowercased token used inside update keys.
+// Slug は update キー内で使う、安定した小文字のトークンを生成する。
 func Slug(s string) string {
 	return strings.Trim(slugInvalid.ReplaceAllString(strings.ToLower(s), "-"), "-")
 }

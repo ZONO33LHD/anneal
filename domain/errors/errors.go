@@ -1,5 +1,5 @@
-// Package errors defines application errors with a stable code, so layers above
-// can branch on the kind of failure without depending on concrete error types.
+// Package errors は安定したコードを持つアプリケーションエラーを定義する。これにより
+// 上位レイヤは具象エラー型に依存せず、失敗の種類で分岐できる。
 package errors
 
 import (
@@ -7,7 +7,7 @@ import (
 	"fmt"
 )
 
-// Code is a coarse, stable error classification.
+// Code は粗粒度で安定したエラー分類である。
 type Code string
 
 const (
@@ -17,7 +17,7 @@ const (
 	CodeInternal   Code = "INTERNAL"
 )
 
-// AppError carries a code, a human message, and an optional wrapped cause.
+// AppError はコード、人間向けメッセージ、および任意のラップされた原因を保持する。
 type AppError struct {
 	Code    Code
 	Message string
@@ -35,17 +35,17 @@ func (e *AppError) Unwrap() error {
 	return e.Err
 }
 
-// New builds an AppError.
+// New は AppError を生成する。
 func New(code Code, message string) *AppError {
 	return &AppError{Code: code, Message: message}
 }
 
-// Wrap builds an AppError around a cause.
+// Wrap は原因をラップした AppError を生成する。
 func Wrap(err error, code Code, message string) *AppError {
 	return &AppError{Code: code, Message: message, Err: err}
 }
 
-// CodeOf extracts the code, defaulting to internal.
+// CodeOf はコードを取り出す。該当しない場合は internal にフォールバックする。
 func CodeOf(err error) Code {
 	if ae, ok := errors.AsType[*AppError](err); ok {
 		return ae.Code

@@ -1,7 +1,7 @@
 package model
 
-// ImprovementStatus is the lifecycle of an improvement candidate. This build
-// covers up to candidate generation; A/B adoption is future work.
+// ImprovementStatus は改善候補のライフサイクルである。このビルドは候補生成までを
+// カバーする。A/B 採用は今後の課題である。
 type ImprovementStatus string
 
 const (
@@ -10,7 +10,7 @@ const (
 	ImprovementRolledBack ImprovementStatus = "rolled_back"
 )
 
-// FailureCase is a low-scoring update kept as learning material.
+// FailureCase は学習材料として保持される低スコアの更新である。
 type FailureCase struct {
 	UpdateKey    string         `json:"update_key"`
 	AgentVersion string         `json:"agent_version"`
@@ -20,7 +20,7 @@ type FailureCase struct {
 	CreatedAt    string         `json:"created_at"`
 }
 
-// AgentImprovement is a generated improvement candidate from the Annealing Loop.
+// AgentImprovement は Annealing Loop から生成された改善候補である。
 type AgentImprovement struct {
 	ImprovementID    string            `json:"improvement_id"`
 	Trigger          string            `json:"trigger"`

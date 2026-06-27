@@ -1,5 +1,5 @@
-// Package config loads runtime configuration from the environment. It holds
-// values only; the registry decides which providers to wire from them.
+// Package config は実行時設定を環境から読み込む。値を保持するだけで、
+// それらからどのプロバイダを組み立てるかはレジストリが決める。
 package config
 
 import (
@@ -11,25 +11,25 @@ import (
 	"github.com/ZONO33LHD/anneal/domain/policy"
 )
 
-// Config holds all runtime configuration.
+// Config はすべての実行時設定を保持する。
 type Config struct {
 	StorePath         string
 	ImproveWindow     int
 	LowScoreThreshold float64
 
-	// Secrets. An empty value means "use the mock for that capability".
+	// シークレット。空値はその機能について「モックを使う」ことを意味する。
 	GeminiAPIKey    string
 	GeminiModel     string
 	GitHubToken     string
 	SlackWebhookURL string
 
-	// ForceMock forces every provider to its mock/offline form (used by demo).
+	// ForceMock はすべてのプロバイダをモック/オフライン形態に強制する（デモで使用）。
 	ForceMock bool
-	// Verbose enables debug logging.
+	// Verbose はデバッグログを有効にする。
 	Verbose bool
 }
 
-// Load reads configuration from the environment (and an optional .env file).
+// Load は環境（および任意の .env ファイル）から設定を読み込む。
 func Load() (*Config, error) {
 	loadDotEnv(".env")
 	return &Config{
@@ -65,8 +65,8 @@ func envFloat(key string, def float64) float64 {
 	return def
 }
 
-// loadDotEnv loads KEY=VALUE lines from a .env file without overwriting existing
-// environment variables. A missing file is fine.
+// loadDotEnv は .env ファイルから KEY=VALUE 行を読み込む。既存の環境変数は
+// 上書きしない。ファイルが存在しなくても問題ない。
 func loadDotEnv(path string) {
 	f, err := os.Open(path)
 	if err != nil {

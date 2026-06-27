@@ -1,8 +1,8 @@
 package model
 
-// ScoreStatus tracks whether an evaluation is finalized. Scores arrive at
-// different times (CI -> review -> merge -> regression), so a record starts
-// partial and is promoted to final once the merge outcome is known.
+// ScoreStatus は評価が確定済みかどうかを追跡する。スコアは異なるタイミングで届くため
+// （CI -> review -> merge -> regression）、レコードは partial で始まり、マージ結果が
+// 判明した時点で final に昇格する。
 type ScoreStatus string
 
 const (
@@ -10,7 +10,7 @@ const (
 	ScoreFinal   ScoreStatus = "final"
 )
 
-// AgentEvaluation is the scorecard for one dependency update; components are 0..100.
+// AgentEvaluation は 1 つの依存関係更新に対するスコアカードである。各構成要素は 0..100。
 type AgentEvaluation struct {
 	RunID             string      `json:"run_id"`
 	UpdateKey         string      `json:"update_key"`
