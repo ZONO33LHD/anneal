@@ -23,9 +23,13 @@ type OSV struct {
 }
 
 // NewOSV returns a live metadata source.
-func NewOSV() gateway.MetadataSource { return &OSV{http: &http.Client{Timeout: 15 * time.Second}} }
+func NewOSV() gateway.MetadataSource {
+	return &OSV{http: &http.Client{Timeout: 15 * time.Second}}
+}
 
-func (OSV) Name() string { return "osv+registry" }
+func (OSV) Name() string {
+	return "osv+registry"
+}
 
 func (o *OSV) LatestVersion(ctx context.Context, eco model.Ecosystem, name, _ string) (string, error) {
 	if eco == model.EcosystemNPM {

@@ -19,9 +19,13 @@ type Mock struct {
 }
 
 // NewMock returns a mock git provider.
-func NewMock() gateway.Git { return &Mock{} }
+func NewMock() gateway.Git {
+	return &Mock{}
+}
 
-func (*Mock) Name() string { return "mock" }
+func (*Mock) Name() string {
+	return "mock"
+}
 
 func (m *Mock) CreateBranchAndPR(_ context.Context, opts gateway.CreatePROptions) (gateway.PRRef, error) {
 	n := m.prCounter.Add(1) + 1000

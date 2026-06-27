@@ -30,7 +30,9 @@ func NewSlack(webhookURL string) gateway.Notifier {
 	return &Slack{webhookURL: webhookURL, http: &http.Client{Timeout: 10 * time.Second}}
 }
 
-func (Slack) Name() string { return "slack" }
+func (Slack) Name() string {
+	return "slack"
+}
 
 func (s *Slack) Notify(ctx context.Context, msg gateway.NotifyMessage) error {
 	lines := []string{fmt.Sprintf("%s *%s*", emoji[msg.Level], msg.Title), msg.Body}

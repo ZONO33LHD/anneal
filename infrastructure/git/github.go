@@ -26,7 +26,9 @@ func NewGitHub(token string) gateway.Git {
 	return &GitHub{token: token, http: &http.Client{Timeout: 30 * time.Second}}
 }
 
-func (GitHub) Name() string { return "github" }
+func (GitHub) Name() string {
+	return "github"
+}
 
 func split(repository string) (owner, repo string) {
 	parts := strings.SplitN(repository, "/", 2)

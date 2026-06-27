@@ -23,10 +23,10 @@ var dataset = map[string]entry{
 			Summary: "Command injection via template in lodash.",
 		}},
 	},
-	"npm:axios":      {latest: "1.7.0"},
-	"npm:express":    {latest: "4.19.2"},
-	"npm:chalk":      {latest: "5.3.0"}, // major: ESM-only, breaking
-	"npm:typescript": {latest: "5.6.2"},
+	"npm:axios":                   {latest: "1.7.0"},
+	"npm:express":                 {latest: "4.19.2"},
+	"npm:chalk":                   {latest: "5.3.0"}, // major: ESM-only, breaking
+	"npm:typescript":              {latest: "5.6.2"},
 	"go:github.com/gin-gonic/gin": {latest: "v1.9.1"},
 	"go:golang.org/x/crypto": {
 		latest: "v0.17.0",
@@ -42,9 +42,13 @@ var dataset = map[string]entry{
 type Mock struct{}
 
 // NewMock returns a mock metadata source.
-func NewMock() gateway.MetadataSource { return Mock{} }
+func NewMock() gateway.MetadataSource {
+	return Mock{}
+}
 
-func (Mock) Name() string { return "mock" }
+func (Mock) Name() string {
+	return "mock"
+}
 
 func (Mock) LatestVersion(_ context.Context, eco model.Ecosystem, name, _ string) (string, error) {
 	return dataset[string(eco)+":"+name].latest, nil

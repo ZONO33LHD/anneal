@@ -14,10 +14,16 @@ import (
 type Mock struct{}
 
 // NewMock returns a mock LLM.
-func NewMock() gateway.LLM { return Mock{} }
+func NewMock() gateway.LLM {
+	return Mock{}
+}
 
-func (Mock) Name() string  { return "mock" }
-func (Mock) Model() string { return "mock-flash-lite" }
+func (Mock) Name() string {
+	return "mock"
+}
+func (Mock) Model() string {
+	return "mock-flash-lite"
+}
 
 var tagRe = regexp.MustCompile(`^\[([a-z-]+)\]`)
 

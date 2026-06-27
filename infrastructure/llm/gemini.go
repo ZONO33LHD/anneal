@@ -27,8 +27,12 @@ func NewGemini(apiKey, model string) gateway.LLM {
 	return &Gemini{apiKey: apiKey, model: model, http: &http.Client{Timeout: 30 * time.Second}}
 }
 
-func (g *Gemini) Name() string  { return "gemini" }
-func (g *Gemini) Model() string { return g.model }
+func (g *Gemini) Name() string {
+	return "gemini"
+}
+func (g *Gemini) Model() string {
+	return g.model
+}
 
 func (g *Gemini) Generate(ctx context.Context, req gateway.LLMRequest) (string, error) {
 	prompt := req.Prompt

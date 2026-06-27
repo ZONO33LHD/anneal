@@ -14,7 +14,9 @@ import (
 type Loader struct{}
 
 // NewLoader returns a RepoConfigLoader.
-func NewLoader() gateway.RepoConfigLoader { return Loader{} }
+func NewLoader() gateway.RepoConfigLoader {
+	return Loader{}
+}
 
 // Load reads .anneal.yml, falling back to defaults (a missing file is fine).
 func (Loader) Load(repoPath string) model.RepoConfig {

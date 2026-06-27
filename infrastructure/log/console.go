@@ -15,11 +15,19 @@ type Console struct {
 }
 
 // NewConsole returns a console logger. verbose enables Debug output.
-func NewConsole(verbose bool) gateway.Logger { return &Console{verbose: verbose} }
+func NewConsole(verbose bool) gateway.Logger {
+	return &Console{verbose: verbose}
+}
 
-func (Console) Step(msg string) { fmt.Println("→ " + msg) }
-func (Console) Info(msg string) { fmt.Println("ℹ " + msg) }
-func (Console) Warn(msg string) { fmt.Fprintln(os.Stderr, "⚠ "+msg) }
+func (Console) Step(msg string) {
+	fmt.Println("→ " + msg)
+}
+func (Console) Info(msg string) {
+	fmt.Println("ℹ " + msg)
+}
+func (Console) Warn(msg string) {
+	fmt.Fprintln(os.Stderr, "⚠ "+msg)
+}
 
 func (l Console) Debug(msg string) {
 	if l.verbose {

@@ -20,9 +20,13 @@ var badge = map[gateway.NotifyLevel]string{
 type Console struct{}
 
 // NewConsole returns a console notifier.
-func NewConsole() gateway.Notifier { return Console{} }
+func NewConsole() gateway.Notifier {
+	return Console{}
+}
 
-func (Console) Name() string { return "console" }
+func (Console) Name() string {
+	return "console"
+}
 
 func (Console) Notify(_ context.Context, msg gateway.NotifyMessage) error {
 	var b strings.Builder
