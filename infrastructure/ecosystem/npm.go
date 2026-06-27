@@ -1,5 +1,5 @@
-// Package ecosystem implements manifest reading/writing and source scanning for
-// the supported package ecosystems.
+// Package ecosystem は、サポート対象のパッケージエコシステムについて、マニフェストの
+// 読み書きとソーススキャンを実装する。
 package ecosystem
 
 import (
@@ -13,7 +13,7 @@ import (
 	"github.com/ZONO33LHD/anneal/domain/model"
 )
 
-// NPM handles package.json dependencies.
+// NPM は package.json の依存関係を扱う。
 type NPM struct{}
 
 func (NPM) ID() model.Ecosystem {
@@ -54,8 +54,8 @@ func (NPM) Scan(repoPath string) ([]gateway.Dependency, error) {
 	return out, nil
 }
 
-// ApplyUpdate rewrites the version via a targeted replace so the file's
-// formatting and key order are preserved.
+// ApplyUpdate は対象を絞った置換でバージョンを書き換えるため、ファイルの
+// フォーマットとキーの順序が保たれる。
 func (NPM) ApplyUpdate(repoPath, name, target string) ([]string, error) {
 	pkgPath := filepath.Join(repoPath, "package.json")
 	data, err := os.ReadFile(pkgPath)
@@ -72,7 +72,7 @@ func (NPM) ApplyUpdate(repoPath, name, target string) ([]string, error) {
 		changed = append(changed, "package.json")
 	}
 	if fileExists(filepath.Join(repoPath, "package-lock.json")) {
-		// In real mode this is where `npm install` would regenerate the lockfile.
+		// 実モードでは、ここで `npm install` がロックファイルを再生成する。
 		changed = append(changed, "package-lock.json")
 	}
 	return changed, nil

@@ -9,7 +9,7 @@ type provider struct {
 	all []gateway.Ecosystem
 }
 
-// NewProvider returns an EcosystemProvider over the supported ecosystems.
+// NewProvider は、サポート対象のエコシステムを扱う EcosystemProvider を返す。
 func NewProvider() gateway.EcosystemProvider {
 	return &provider{all: []gateway.Ecosystem{NPM{}, GoMod{}}}
 }

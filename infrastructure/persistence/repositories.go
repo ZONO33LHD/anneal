@@ -5,11 +5,11 @@ import (
 	"github.com/ZONO33LHD/anneal/domain/repository"
 )
 
-// The three repositories share one DB so a single JSON file holds all state.
+// 3 つのリポジトリは 1 つの DB を共有するため、単一の JSON ファイルがすべての状態を保持する。
 
 type updateRepository struct{ db *DB }
 
-// NewUpdateRepository returns the UpdateRepository backed by db.
+// NewUpdateRepository は、db を基盤とする UpdateRepository を返す。
 func NewUpdateRepository(db *DB) repository.UpdateRepository {
 	return &updateRepository{db}
 }
@@ -53,7 +53,7 @@ func (r *updateRepository) ListActive() ([]model.DependencyUpdate, error) {
 
 type evaluationRepository struct{ db *DB }
 
-// NewEvaluationRepository returns the EvaluationRepository backed by db.
+// NewEvaluationRepository は、db を基盤とする EvaluationRepository を返す。
 func NewEvaluationRepository(db *DB) repository.EvaluationRepository {
 	return &evaluationRepository{db}
 }
@@ -70,7 +70,7 @@ func (r *evaluationRepository) List() ([]model.AgentEvaluation, error) {
 
 type improvementRepository struct{ db *DB }
 
-// NewImprovementRepository returns the ImprovementRepository backed by db.
+// NewImprovementRepository は、db を基盤とする ImprovementRepository を返す。
 func NewImprovementRepository(db *DB) repository.ImprovementRepository {
 	return &improvementRepository{db}
 }

@@ -1,6 +1,6 @@
-// Package persistence implements the repository ports with a local JSON file
-// acting as the single source of truth. It is designed to be swapped for a
-// Firestore implementation behind the same interfaces.
+// Package persistence は、唯一の真実として振る舞うローカルの JSON ファイルを使って
+// リポジトリのポートを実装する。同じインターフェースの背後で Firestore 実装に
+// 差し替えられるよう設計されている。
 package persistence
 
 import (
@@ -28,9 +28,9 @@ func emptySnapshot() snapshot {
 	}
 }
 
-// DB is the shared JSON-backed storage that all three repositories sit on. An
-// empty path keeps everything in memory (used by tests). All reads/writes go
-// through an in-memory snapshot flushed to disk after each mutation.
+// DB は、3 つのリポジトリすべてが乗る、JSON を基盤とする共有ストレージである。
+// path が空の場合はすべてをメモリ内に保持する（テストで使用）。すべての読み書きは、
+// 変更のたびにディスクへフラッシュされるメモリ内スナップショットを経由する。
 type DB struct {
 	path   string
 	mu     sync.Mutex
@@ -38,7 +38,7 @@ type DB struct {
 	loaded bool
 }
 
-// NewDB returns a DB backed by the file at path ("" => in memory).
+// NewDB は、path のファイルを基盤とする DB を返す（"" => メモリ内）。
 func NewDB(path string) *DB {
 	return &DB{path: path, snap: emptySnapshot()}
 }
@@ -86,7 +86,7 @@ func (d *DB) flush() error {
 	return os.WriteFile(d.path, data, 0o644)
 }
 
-// --- update operations ---
+// --- update 操作 ---
 
 func (d *DB) getUpdate(key string) (*model.DependencyUpdate, error) {
 	d.mu.Lock()
@@ -125,7 +125,7 @@ func (d *DB) listUpdates() ([]model.DependencyUpdate, error) {
 	return out, nil
 }
 
-// --- evaluation operations ---
+// --- evaluation 操作 ---
 
 func (d *DB) getEval(key string) (*model.AgentEvaluation, error) {
 	d.mu.Lock()
@@ -163,7 +163,7 @@ func (d *DB) listEvals() ([]model.AgentEvaluation, error) {
 	return out, nil
 }
 
-// --- failure & improvement operations ---
+// --- failure と improvement 操作 ---
 
 func (d *DB) putFailure(f model.FailureCase) error {
 	d.mu.Lock()

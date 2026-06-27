@@ -10,7 +10,7 @@ import (
 	"github.com/ZONO33LHD/anneal/domain/model"
 )
 
-// GoMod handles go.mod dependencies.
+// GoMod は go.mod の依存関係を扱う。
 type GoMod struct{}
 
 func (GoMod) ID() model.Ecosystem {
@@ -21,7 +21,7 @@ func (GoMod) Detect(repoPath string) bool {
 	return fileExists(filepath.Join(repoPath, "go.mod"))
 }
 
-// requireLine matches "  module/path v1.2.3  // indirect".
+// requireLine は "  module/path v1.2.3  // indirect" にマッチする。
 var requireLine = regexp.MustCompile(`^\s*([^\s]+)\s+(v\d[^\s]*)(\s*//\s*indirect)?\s*$`)
 
 func (GoMod) Scan(repoPath string) ([]gateway.Dependency, error) {
@@ -51,7 +51,7 @@ func (GoMod) Scan(repoPath string) ([]gateway.Dependency, error) {
 			out = append(out, gateway.Dependency{
 				Name:           m[1],
 				CurrentVersion: m[2],
-				IsDev:          m[3] != "", // indirect treated as dev-like
+				IsDev:          m[3] != "", // indirect は dev 相当として扱う
 				Ecosystem:      model.EcosystemGo,
 			})
 		}

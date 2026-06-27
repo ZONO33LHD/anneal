@@ -16,15 +16,15 @@ var skipDirs = map[string]bool{
 
 var textExt = regexp.MustCompile(`\.(ts|tsx|js|jsx|mjs|cjs|go|json)$`)
 
-// Scanner finds where a package is imported across a repository's source files.
+// Scanner は、リポジトリのソースファイル全体でパッケージがどこでインポートされているかを探す。
 type Scanner struct{}
 
-// NewScanner returns a SourceScanner.
+// NewScanner は SourceScanner を返す。
 func NewScanner() gateway.SourceScanner {
 	return Scanner{}
 }
 
-// UsageSites returns the relative paths of files that reference packageName.
+// UsageSites は、packageName を参照しているファイルの相対パスを返す。
 func (Scanner) UsageSites(repoPath, packageName string) []string {
 	if repoPath == "" {
 		return nil
