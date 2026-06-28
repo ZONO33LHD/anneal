@@ -23,7 +23,7 @@ func NewMock() gateway.Git {
 	return &Mock{}
 }
 
-func (*Mock) Name() string {
+func (*Mock) ProviderName() string {
 	return "mock"
 }
 

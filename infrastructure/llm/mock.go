@@ -18,7 +18,7 @@ func NewMock() gateway.LLM {
 	return Mock{}
 }
 
-func (Mock) Name() string {
+func (Mock) ProviderName() string {
 	return "mock"
 }
 func (Mock) Model() string {

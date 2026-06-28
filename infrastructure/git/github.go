@@ -32,7 +32,7 @@ func NewGitHub(token string) gateway.Git {
 	return &GitHub{token: token, http: &http.Client{Timeout: 30 * time.Second}}
 }
 
-func (GitHub) Name() string {
+func (GitHub) ProviderName() string {
 	return "github"
 }
 

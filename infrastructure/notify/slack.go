@@ -30,7 +30,7 @@ func NewSlack(webhookURL string) gateway.Notifier {
 	return &Slack{webhookURL: webhookURL, http: &http.Client{Timeout: 10 * time.Second}}
 }
 
-func (Slack) Name() string {
+func (Slack) ProviderName() string {
 	return "slack"
 }
 

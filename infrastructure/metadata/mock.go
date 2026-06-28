@@ -46,7 +46,7 @@ func NewMock() gateway.MetadataSource {
 	return Mock{}
 }
 
-func (Mock) Name() string {
+func (Mock) ProviderName() string {
 	return "mock"
 }
 

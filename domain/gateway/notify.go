@@ -22,6 +22,6 @@ type NotifyMessage struct {
 
 // Notifier は通知を配信する。
 type Notifier interface {
-	Name() string
+	ProviderName() string
 	Notify(ctx context.Context, msg NotifyMessage) error
 }

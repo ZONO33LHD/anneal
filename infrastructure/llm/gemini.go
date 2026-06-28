@@ -27,7 +27,7 @@ func NewGemini(apiKey, model string) gateway.LLM {
 	return &Gemini{apiKey: apiKey, model: model, http: &http.Client{Timeout: 30 * time.Second}}
 }
 
-func (g *Gemini) Name() string {
+func (g *Gemini) ProviderName() string {
 	return "gemini"
 }
 func (g *Gemini) Model() string {

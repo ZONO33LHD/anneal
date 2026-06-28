@@ -27,7 +27,7 @@ func NewOSV() gateway.MetadataSource {
 	return &OSV{http: &http.Client{Timeout: 15 * time.Second}}
 }
 
-func (OSV) Name() string {
+func (OSV) ProviderName() string {
 	return "osv+registry"
 }
 

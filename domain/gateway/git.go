@@ -45,7 +45,7 @@ type PRRef struct {
 
 // Git は git ホストの抽象化を表す。
 type Git interface {
-	Name() string
+	ProviderName() string
 	CreateBranchAndPR(ctx context.Context, opts CreatePROptions) (PRRef, error)
 	PushFix(ctx context.Context, opts PushFixOptions) error
 	CheckCI(ctx context.Context, opts CICheckOptions) (CICheck, error)

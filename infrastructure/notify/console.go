@@ -24,7 +24,7 @@ func NewConsole() gateway.Notifier {
 	return Console{}
 }
 
-func (Console) Name() string {
+func (Console) ProviderName() string {
 	return "console"
 }
 
