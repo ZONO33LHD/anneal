@@ -57,7 +57,7 @@ func (s *scanUsecase) Run(ctx context.Context, repoArg, repoName string) (ScanRe
 	cfg := s.repoConfig.Load(repoPath)
 	ecos := s.ecosystems.ForRepo(repoPath)
 	if len(ecos) == 0 {
-		s.log.Warn("no supported manifest found in " + repoPath)
+		s.log.Warn("no supported manifest found", "repo", repoPath)
 		return ScanResult{}, nil
 	}
 
@@ -95,7 +95,7 @@ func (s *scanUsecase) consider(
 	latest, err := s.metadata.LatestVersion(ctx, eco, dep.Name, dep.CurrentVersion)
 	if err != nil {
 		// メタデータ取得失敗を「更新なし」と取り違えないよう、明示的に縮退として記録する。
-		s.log.Warn("metadata degraded: latest version lookup failed for " + dep.Name + ": " + err.Error())
+		s.log.Warn("metadata degraded: latest version lookup failed", "package", dep.Name, "err", err)
 		return nil, nil
 	}
 	if latest == "" || !model.IsUpgrade(dep.CurrentVersion, latest) {
@@ -104,7 +104,7 @@ func (s *scanUsecase) consider(
 	advisories, err := s.metadata.Advisories(ctx, eco, dep.Name, dep.CurrentVersion)
 	if err != nil {
 		// アドバイザリ取得失敗を「CVEなし」と取り違えないよう警告する（更新自体は継続）。
-		s.log.Warn("metadata degraded: advisory lookup failed for " + dep.Name + ": " + err.Error())
+		s.log.Warn("metadata degraded: advisory lookup failed", "package", dep.Name, "err", err)
 	}
 	var cve *model.CVEInfo
 	if len(advisories) > 0 {
@@ -152,7 +152,7 @@ func (s *scanUsecase) consider(
 		Title: title,
 		Body:  fmt.Sprintf("%s → %s (%s, priority=%s)", dep.CurrentVersion, latest, updateType, rec.Priority),
 	})
-	s.log.Step(fmt.Sprintf("detected %s priority=%s", key, rec.Priority))
+	s.log.Step("detected", "update_key", key, "priority", rec.Priority)
 	return &rec, nil
 }
 

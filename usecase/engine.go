@@ -67,29 +67,44 @@ var scoreStates = map[model.State]bool{
 // 通知はベストエフォートだが、握りつぶさず可視化する。
 func notifyOrLog(ctx context.Context, n gateway.Notifier, log gateway.Logger, msg gateway.NotifyMessage) {
 	if err := n.Notify(ctx, msg); err != nil {
-		log.Warn("notify failed: " + err.Error())
+		log.Warn("notify failed", "title", msg.Title, "err", err)
 	}
 }
 
 // Dispatch は単一のレコードを意味のある1ステップだけ進めて永続化し、
 // その評価を再計算する。エラー時はレコードを error 状態へ移す。
-func (e *engine) Dispatch(ctx context.Context, rec model.DependencyUpdate) (bool, model.DependencyUpdate, error) {
-	next, moved, err := e.advanceOneStep(ctx, rec)
-	if err != nil {
-		errored := rec.ToError(err.Error())
-		e.log.Warn("dispatch failed; moving to error: " + err.Error())
+func (e *engine) Dispatch(ctx context.Context, rec model.DependencyUpdate) (moved bool, out model.DependencyUpdate, err error) {
+	// 1 レコードの panic で tick 全体を巻き込まないよう recover し、スタックトレース付きで
+	// 記録したうえで当該レコードを error 状態へ退避する。
+	defer func() {
+		if r := recover(); r != nil {
+			perr := fmt.Errorf("panic during dispatch: %v", r)
+			e.log.Error("panic during dispatch", perr, "update_key", rec.UpdateKey)
+			errored := rec.ToError(perr.Error())
+			if putErr := e.updates.Put(errored); putErr != nil {
+				moved, out, err = false, rec, errors.Join(perr, putErr)
+				return
+			}
+			moved, out, err = true, errored, nil
+		}
+	}()
+
+	next, stepped, advErr := e.advanceOneStep(ctx, rec)
+	if advErr != nil {
+		errored := rec.ToError(advErr.Error())
+		e.log.Error("dispatch failed; moving to error", advErr, "update_key", rec.UpdateKey)
 		if putErr := e.updates.Put(errored); putErr != nil {
 			// error 状態の保存にも失敗した場合は、両方の原因を呼び出し側へ返す
 			// （状態が古いまま成功扱いされるのを防ぐ）。
-			return false, rec, errors.Join(err, putErr)
+			return false, rec, errors.Join(advErr, putErr)
 		}
 		return true, errored, nil
 	}
-	if !moved {
+	if !stepped {
 		return false, rec, nil
 	}
-	if err := e.updates.Put(next); err != nil {
-		return false, rec, err
+	if putErr := e.updates.Put(next); putErr != nil {
+		return false, rec, putErr
 	}
 	e.maybeScore(next)
 	return true, next, nil
@@ -136,7 +151,7 @@ func (e *engine) Reconcile(ctx context.Context) (int, error) {
 	if err != nil {
 		return changed, err
 	}
-	e.log.Info(fmt.Sprintf("reconcile complete advanced=%d", changed))
+	e.log.Info("reconcile complete", "advanced", changed)
 	return changed, nil
 }
 
@@ -285,5 +300,5 @@ func (e *engine) recordIfLowScore(rec model.DependencyUpdate, eval model.AgentEv
 		Snapshot:     snapshot,
 		CreatedAt:    model.NowString(),
 	})
-	e.log.Warn("recorded failure case " + rec.UpdateKey)
+	e.log.Warn("recorded failure case", "update_key", rec.UpdateKey, "score", eval.TotalScore)
 }

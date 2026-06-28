@@ -35,7 +35,7 @@ type Registry struct {
 // New は config からアプリケーションを組み立て、利用可能な secret ごとに実装とモックの
 // provider を選択します（ForceMock が設定されている場合を除く）。
 func New(cfg *config.Config) *Registry {
-	logger := log.NewConsole(cfg.Verbose)
+	logger := log.New(log.Options{Verbose: cfg.Verbose, JSON: cfg.LogJSON})
 
 	db := persistence.NewDB(cfg.StorePath)
 	updates := persistence.NewUpdateRepository(db)
