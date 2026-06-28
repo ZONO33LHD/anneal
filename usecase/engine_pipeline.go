@@ -1,0 +1,166 @@
+package usecase
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/ZONO33LHD/anneal/domain/gateway"
+	"github.com/ZONO33LHD/anneal/domain/model"
+	"github.com/ZONO33LHD/anneal/domain/service"
+)
+
+// analyzeStep: detected -> analyzing（影響分析）。
+func (e *engine) analyzeStep(ctx context.Context, rec model.DependencyUpdate) (model.DependencyUpdate, error) {
+	impact := e.analyzeImpact(ctx, rec)
+	next, err := rec.Transition(model.StateAnalyzing, "impact analysis complete")
+	if err != nil {
+		return rec, err
+	}
+	next.Impact = &impact
+	next.RiskLevel = impact.RiskLevel
+	e.log.Step(fmt.Sprintf("analyzing %s risk=%s", rec.UpdateKey, impact.RiskLevel))
+	return next, nil
+}
+
+// createPRStep: pr_creating -> pr_created（バージョン更新の適用、PR の作成とオープン）。
+func (e *engine) createPRStep(ctx context.Context, rec model.DependencyUpdate) (model.DependencyUpdate, error) {
+	var changed []string
+	if eco := e.ecosystems.ByID(rec.Ecosystem); eco != nil && rec.RepoPath != "" {
+		c, err := eco.ApplyUpdate(rec.RepoPath, rec.PackageName, rec.TargetVersion)
+		if err != nil {
+			return rec, err
+		}
+		changed = c
+	}
+	title, body, branch := e.composePR(ctx, rec, changed)
+	ref, err := e.git.CreateBranchAndPR(ctx, gateway.CreatePROptions{
+		Repository:   rec.Repository,
+		Base:         "main",
+		Branch:       branch,
+		Title:        title,
+		Body:         body,
+		ChangedFiles: changed,
+	})
+	if err != nil {
+		return rec, err
+	}
+
+	level := gateway.NotifyInfo
+	if rec.CVE != nil {
+		level = gateway.NotifyPriority
+	}
+	conf, risk := "n/a", "n/a"
+	if rec.Impact != nil {
+		conf = fmt.Sprintf("%.2f", rec.Impact.Confidence)
+		risk = string(rec.Impact.RiskLevel)
+	}
+	_ = e.notifier.Notify(ctx, gateway.NotifyMessage{
+		Level: level,
+		Title: "PR opened: " + title,
+		Body:  fmt.Sprintf("Risk %s · Confidence %s", risk, conf),
+		URL:   ref.URL,
+	})
+
+	next, err := rec.Transition(model.StatePRCreated, "branch + changes + PR created")
+	if err != nil {
+		return rec, err
+	}
+	next.Branch = branch
+	next.PullRequestURL = ref.URL
+	next.PullRequestNumber = ref.Number
+	e.log.Step("pr_created " + rec.UpdateKey + " " + ref.URL)
+	return next, nil
+}
+
+// ciStep: ci_running -> ci_passed | ci_failed。
+func (e *engine) ciStep(ctx context.Context, rec model.DependencyUpdate) (model.DependencyUpdate, error) {
+	attempt := 0
+	if rec.CI != nil {
+		attempt = rec.CI.Attempts
+	}
+	shouldFailFirst := rec.UpdateType == model.Minor && rec.Impact != nil && len(rec.Impact.UsageSites) > 0
+	res, err := e.git.CheckCI(ctx, gateway.CICheckOptions{
+		Repository:      rec.Repository,
+		PRNumber:        rec.PullRequestNumber,
+		Branch:          rec.Branch,
+		Attempt:         attempt,
+		ShouldFailFirst: shouldFailFirst,
+	})
+	if err != nil {
+		return rec, err
+	}
+	if res.Passed {
+		next, err := rec.Transition(model.StateCIPassed, "CI succeeded")
+		if err != nil {
+			return rec, err
+		}
+		next.CI = &model.CIResult{Status: "passed", Attempts: attempt}
+		e.log.Step(fmt.Sprintf("ci_passed %s attempt=%d", rec.UpdateKey, attempt))
+		return next, nil
+	}
+	next, err := rec.Transition(model.StateCIFailed, "CI failed")
+	if err != nil {
+		return rec, err
+	}
+	next.CI = &model.CIResult{Status: "failed", Attempts: attempt, LogSummary: res.LogSummary}
+	e.log.Step(fmt.Sprintf("ci_failed %s attempt=%d", rec.UpdateKey, attempt))
+	return next, nil
+}
+
+// fixStep: ci_failed -> fixing | awaiting_review。
+func (e *engine) fixStep(ctx context.Context, rec model.DependencyUpdate) (model.DependencyUpdate, error) {
+	logSummary, attempts := "unknown failure", 0
+	if rec.CI != nil {
+		logSummary, attempts = rec.CI.LogSummary, rec.CI.Attempts
+	}
+	category, fixable := service.ClassifyCIFailure(logSummary)
+
+	// 失敗が繰り返された場合は自己修復を止め、人間に引き継ぐ。
+	if attempts >= 2 {
+		next, err := rec.Transition(model.StateAwaitingReview, "repeated CI failures → human")
+		if err != nil {
+			return rec, err
+		}
+		ci := *rec.CI
+		ci.FailureCategory, ci.Fixable = category, false
+		next.CI = &ci
+		e.log.Warn("repeated CI failures, escalating " + rec.UpdateKey)
+		return next, nil
+	}
+
+	if !fixable {
+		next, err := rec.Transition(model.StateAwaitingReview, "unfixable: "+string(category))
+		if err != nil {
+			return rec, err
+		}
+		ci := *rec.CI
+		ci.FailureCategory, ci.Fixable = category, false
+		next.CI = &ci
+		e.log.Step("awaiting_review " + rec.UpdateKey + " (" + string(category) + ")")
+		return next, nil
+	}
+
+	if err := e.git.PushFix(ctx, gateway.PushFixOptions{
+		Repository:   rec.Repository,
+		Branch:       rec.Branch,
+		PRNumber:     rec.PullRequestNumber,
+		Message:      "fix: address " + string(category) + " after dependency bump",
+		ChangedFiles: []string{"(auto-fix)"},
+	}); err != nil {
+		return rec, err
+	}
+	summary := e.ciFailureSummary(ctx, logSummary)
+	_ = e.notifier.Notify(ctx, gateway.NotifyMessage{
+		Level: gateway.NotifyInfo,
+		Title: "Anneal auto-fixed CI: " + string(category),
+		Body:  summary,
+		URL:   rec.PullRequestURL,
+	})
+	next, err := rec.Transition(model.StateFixing, "auto-fix for "+string(category))
+	if err != nil {
+		return rec, err
+	}
+	next.CI = &model.CIResult{Status: "running", Attempts: attempts + 1, FailureCategory: category, Fixable: true}
+	e.log.Step("fixing " + rec.UpdateKey + " (" + string(category) + ")")
+	return next, nil
+}
