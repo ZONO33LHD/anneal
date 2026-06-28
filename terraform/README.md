@@ -1,6 +1,26 @@
 # Terraform
 
-Anneal の Terraform は、PR で `plan`、`main` への merge で `apply` します。最初の対象は `terraform/resources/anneal-prd/api` のみで、後続リソースは `terraform/path-filter/anneal.yml` の記述順に追加します。
+Anneal の Terraform は、PR で `plan`、`main` への merge で `apply` します。後続リソースは `terraform/path-filter/anneal.yml` の記述順に追加します。
+
+## モジュール構成（apply 順）
+
+`terraform/path-filter/anneal.yml` の記述順 = apply 順です。後段は前段に依存します。
+
+1. `api` — 後続が依存する Google Cloud API を有効化
+2. `artifactregistry` — Cloud Run 用 Docker イメージのリポジトリ
+3. `firestore` — アプリ状態の永続化先（`(default)` DB, Native, asia-northeast1, 削除保護あり）
+4. `secretmanager` — `GITHUB_TOKEN` / `GITHUB_WEBHOOK_SECRET` / `GEMINI_API_KEY` / `SLACK_WEBHOOK_URL` の secret（箱のみ）
+5. `iam` — Cloud Run 実行用 SA（`anneal-runtime`）と最小権限（datastore.user / secretmanager.secretAccessor / logging.logWriter）
+
+Cloud Run サービス本体とイメージビルドは後続 PR で追加します。
+
+### Secret の値の投入
+
+`secretmanager` モジュールは secret の**箱だけ**を作り、値（version）は Terraform で管理しません（state やコードに秘密を載せないため）。値は運用で手動投入してください。
+
+```sh
+printf '%s' "$GITHUB_TOKEN" | gcloud secrets versions add GITHUB_TOKEN --data-file=- --project anneal-prd
+```
 
 ## GitHub Secrets
 
