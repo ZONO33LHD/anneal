@@ -233,6 +233,7 @@ func cmdAdopt() error {
 	if err != nil {
 		return err
 	}
+	defer func() { _ = reg.Close() }()
 	return reg.Adoption.Evaluate(runContext())
 }
 
