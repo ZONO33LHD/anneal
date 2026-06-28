@@ -94,18 +94,27 @@ func (h *githubWebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// validSignature は GitHub Webhook の署名を検証し、リクエストが本当に GitHub から
+// 来た（=共有 secret を知る相手が body を改ざんせず送った）ことを確認する。
+// GitHub は受信 body を secret 鍵で HMAC-SHA256 し、その結果を
+// "X-Hub-Signature-256: sha256=<hex>" ヘッダで送る。こちらでも同じ body と secret で
+// HMAC を計算し直し、両者を比較する。
 func validSignature(body []byte, secret, header string) bool {
 	const prefix = "sha256="
+	// ヘッダは必ず "sha256=" で始まる。前置きが無ければ未署名として弾く。
 	if !strings.HasPrefix(header, prefix) {
 		return false
 	}
+	// 16 進文字列の署名値をバイト列へ戻す。壊れた値なら不正として弾く。
 	got, err := hex.DecodeString(strings.TrimPrefix(header, prefix))
 	if err != nil {
 		return false
 	}
+	// 受信 body から期待値を再計算する。
 	mac := hmac.New(sha256.New, []byte(secret))
 	_, _ = mac.Write(body)
 	want := mac.Sum(nil)
+	// タイミング攻撃を避けるため、通常の比較ではなく定数時間比較を使う。
 	return hmac.Equal(got, want)
 }
 
