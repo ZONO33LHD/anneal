@@ -10,7 +10,7 @@ Anneal は、依存ライブラリ・脆弱性のアップグレードを AI が
 - **更新対象: npm（`package.json`）/ Go（`go.mod`）**
 - 設計: **クリーンアーキテクチャ**（`domain` → `usecase` → `infrastructure`、`registry` で DI）
 - 外部サービス（Gemini / GitHub / Slack）は **domain のポート**として抽象化。API キーが無ければ自動でモックにフォールバックし、**鍵ゼロで E2E が通る**。`.env` に鍵を入れると実サービスへ切替。
-- 永続ストアはローカル JSON（Firestore へ差し替え可能な `repository` ポート）。外部依存は YAML のみ。
+- 永続ストアはローカル JSON / **Firestore** を `ANNEAL_STORE_BACKEND` で切替（`repository` ポート）。本番は **Cloud Run + Firestore** で稼働。
 
 ## クイックスタート
 
@@ -29,6 +29,40 @@ go run ./cmd/anneal demo   # フルライフサイクルをワンコマンドで
 3. **🔥 Annealing Loop** — 確定スコアが基準を下回ると失敗事例を蓄積し、改善仮説とプロンプト改善案を生成。
 
 major 更新 (chalk) や認証系 (golang.org/x/crypto) は **人間承認ゲート**へ回されます。
+
+## 使い方（3 モード）
+
+全体像: `scan` で検知 → `tick`（または Webhook）で状態機械が 1 ステップずつ進む（分析 → 承認ゲート → PR → CI → 自己修復 → マージ → スコア）→ 低スコアなら Annealing Loop が改善候補を生成 → `adopt` で A/B 採用判断 → ダッシュボードで可視化。
+
+### 1. お試し（鍵ゼロ）
+
+```bash
+go run ./cmd/anneal demo
+```
+
+全モックで検知 → PR → CI 自己修復 → スコア → Annealing → A/B を一気に再現します（挙動理解用）。
+
+### 2. ローカル実運用（実 API・ポーリング駆動）
+
+`.env`（`.env.example` 参照）に鍵を設定し、定期実行（cron 等）で回します。
+
+```bash
+anneal scan /path/to/repo -r owner/repo   # 検知（detected レコードを冪等生成）
+anneal tick                               # 状態を 1 ステップ進める（PR/CI/スコア/Annealing/A/B まで）
+anneal reconcile                          # 取りこぼしレコードを実状態へ追従
+anneal status                             # 現状確認
+```
+
+Webhook 無しでも「定期 `scan` + `tick`」で運用できます。
+
+### 3. 本番（GCP / Cloud Run・イベント駆動）
+
+1. Terraform で `api → artifactregistry → firestore → secretmanager → iam → cloudrun` を apply（[`terraform/README.md`](terraform/README.md)）し、secret 値を投入。
+2. `main` への push で `image-build` ワークフローがイメージを Artifact Registry へ push し、Cloud Run へ deploy。
+3. Cloud Run は `ANNEAL_STORE_BACKEND=firestore` で `serve` を起動。GitHub の Webhook を `https://<cloud-run-url>/webhooks/github` に設定（`check_suite` / `pull_request_review` / `pull_request`）すると、イベントで状態機械が進みます（署名は `GITHUB_WEBHOOK_SECRET` で検証）。
+4. ステータスダッシュボードは Cloud Run の `/`（または `/dashboard`）で閲覧できます。
+
+> 注: 定期 `scan` / `tick` の Cloud Scheduler 配線は未実装です。現状は Webhook 駆動 + 手動/外部からの `scan` 起動を想定しています。
 
 ## アーキテクチャ（クリーンアーキテクチャ）
 
@@ -66,9 +100,11 @@ infrastructure/            ポートの実装（adapter）
 
 ```text
 anneal scan <repoPath> [-r owner/repo]   リポジトリを走査し detected レコードを冪等生成
-anneal tick                              アクティブな全レコードを1ステップ進める
+anneal tick                              アクティブな全レコードを1ステップ進める（Annealing/A/B も実行）
 anneal reconcile                         取りこぼしレコードを実状態へ追従
+anneal serve                             GitHub Webhook を受けるHTTPサーバ＋ダッシュボードを起動
 anneal improve                           スコア低下チェック → Annealing Loop
+anneal adopt                             A/B 採用を1ステップ進める（canary → 採用/巻き戻し）
 anneal status                            レコードとスコアの一覧
 anneal demo                              バンドル fixture でフルフロー（全モック）
 ```
@@ -80,10 +116,20 @@ anneal demo                              バンドル fixture でフルフロー
 | 変数 | 無し | 有り |
 |---|---|---|
 | `GEMINI_API_KEY` | Mock LLM | Gemini (`gemini-2.5-flash-lite`) |
-| `GITHUB_TOKEN` | Mock git | GitHub REST API |
+| `GITHUB_TOKEN` | Mock git | GitHub REST API（branch/commit/PR を Git data API で実作成） |
 | `SLACK_WEBHOOK_URL` | Console 通知 | Slack Incoming Webhook |
 
 `GEMINI_API_KEY` か `GITHUB_TOKEN` のいずれかがある場合、メタデータ取得は OSV.dev + npm レジストリ / Go module proxy に切替わります（すべて標準 `net/http`）。
+
+その他の主な設定（[`.env.example`](.env.example)）:
+
+| 変数 | 既定 | 用途 |
+|---|---|---|
+| `ANNEAL_STORE_BACKEND` | `json` | 永続化バックエンド（`json` / `firestore`） |
+| `ANNEAL_FIRESTORE_PROJECT` | （`GOOGLE_CLOUD_PROJECT`） | Firestore のプロジェクト ID |
+| `ANNEAL_HTTP_ADDR` / `PORT` | `:8080` | `serve` の待受アドレス（Cloud Run は `PORT` を注入） |
+| `GITHUB_WEBHOOK_SECRET` | （必須・serve 時） | Webhook の HMAC-SHA256 署名検証 |
+| `ANNEAL_LOG_FORMAT` | text | `json` で severity 付き構造化ログ（Cloud Logging 向け） |
 
 ## テスト
 
@@ -96,8 +142,19 @@ go vet ./...
 - **integration (infrastructure)**: JSON 永続（永続・active判定）/ npm・go パーサ / ソース走査
 - **e2e (usecase)**: scan → drive のフル通し（検知・冪等・自己修復・人間承認・Annealing 発火）
 
-## スコープ外（今回未実装 / 将来）
+## 実装済みの主な機能
 
-- A/B 評価による改善版の自動採用・カナリア・ロールバック
-- ダッシュボード UI
-- GCP 本番 IaC（Cloud Run / Pub/Sub / Firestore）。`repository` ほか各ポートは差し替え前提で設計済み。
+- 検知 → 影響分析 → 人間承認ゲート → PR 作成 → CI 自己修復 → 段階スコアリング
+- **実モード GitHub**（Git data API で branch/commit/PR を実作成）
+- **Webhook イベント駆動**（`serve`、署名検証・trace 伝播）
+- **Firestore 永続化**（`ANNEAL_STORE_BACKEND` で切替）
+- **A/B 採用・カナリア・ロールバック**（`adopt` / `tick`）
+- **ステータスダッシュボード**（`serve` の `/`）
+- **GCP 本番 IaC**（Terraform: API/Artifact Registry/Firestore/Secret/IAM/Cloud Run）＋ コンテナイメージの build/push/deploy（GitHub Actions）
+
+## スコープ外（将来）
+
+- Cloud Scheduler による定期 `scan` / `tick` の自動起動
+- Python など npm / Go 以外のエコシステム
+- Dependabot Alert Webhook による検知トリガー
+- 採用版に応じたプロンプト本文の動的差し替え
