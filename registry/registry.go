@@ -29,12 +29,13 @@ import (
 
 // Registry は CLI が必要とする、配線済みの usecase と repository を保持します。
 type Registry struct {
-	Scan     usecase.ScanUsecase
-	Engine   usecase.EngineUsecase
-	Anneal   usecase.AnnealUsecase
-	Adoption usecase.AdoptionUsecase
-	Webhook  usecase.WebhookUsecase
-	Logger   gateway.Logger
+	Scan      usecase.ScanUsecase
+	Engine    usecase.EngineUsecase
+	Anneal    usecase.AnnealUsecase
+	Adoption  usecase.AdoptionUsecase
+	Webhook   usecase.WebhookUsecase
+	Dashboard usecase.DashboardUsecase
+	Logger    gateway.Logger
 
 	Updates      repository.UpdateRepository
 	Evaluations  repository.EvaluationRepository
@@ -94,6 +95,7 @@ func New(cfg *config.Config) (*Registry, error) {
 		Anneal:       usecase.NewAnnealUsecase(evals, improvements, llmGW, notifier, logger, cfg.ImproveWindow, cfg.LowScoreThreshold),
 		Adoption:     usecase.NewAdoptionUsecase(evals, improvements, notifier, logger, policy.MinCanarySample, policy.CanaryRegressionMargin),
 		Webhook:      usecase.NewWebhookUsecase(updates, engine, logger),
+		Dashboard:    usecase.NewDashboardUsecase(updates, evals, improvements),
 		Logger:       logger,
 		Updates:      updates,
 		Evaluations:  evals,
