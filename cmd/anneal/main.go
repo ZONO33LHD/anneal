@@ -3,16 +3,22 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"sort"
+	"syscall"
+	"time"
 
 	"github.com/ZONO33LHD/anneal/domain/config"
 	"github.com/ZONO33LHD/anneal/domain/ctxkey"
 	"github.com/ZONO33LHD/anneal/domain/policy"
 	applog "github.com/ZONO33LHD/anneal/infrastructure/log"
+	webhookhttp "github.com/ZONO33LHD/anneal/interface/http"
 	"github.com/ZONO33LHD/anneal/registry"
 )
 
@@ -44,6 +50,8 @@ func run(args []string) error {
 		return cmdTick()
 	case "reconcile":
 		return cmdReconcile()
+	case "serve":
+		return cmdServe()
 	case "improve":
 		return cmdImprove()
 	case "status":
@@ -66,6 +74,7 @@ Usage:
   anneal scan <repoPath> [-r owner/repo]   Scan a repository and create detected records
   anneal tick                              Advance every active record one step
   anneal reconcile                         Catch up records left behind by missed events
+  anneal serve                             Listen for GitHub webhooks over HTTP
   anneal improve                           Run the Annealing Loop score check
   anneal status                            Print a summary of records and scores
   anneal demo                              Run the full lifecycle on the bundled fixture (all-mock)
@@ -134,6 +143,64 @@ func cmdReconcile() error {
 		return err
 	}
 	return reg.Anneal.MaybeAnneal(ctx)
+}
+
+func cmdServe() error {
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+	reg := registry.New(cfg)
+	mux := http.NewServeMux()
+	mux.Handle("/webhooks/github", webhookhttp.NewGitHubWebhookHandler(webhookhttp.GitHubWebhookOptions{
+		Secret:  cfg.GitHubWebhookSecret,
+		Webhook: reg.Webhook,
+		Logger:  reg.Logger,
+	}))
+
+	server := &http.Server{
+		Addr:              cfg.HTTPAddr,
+		Handler:           mux,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       60 * time.Second,
+	}
+	ctx := runContext()
+	signalCtx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	// ListenAndServe はブロックするため別 goroutine で動かし、その終了結果を
+	// チャネルで main 側へ渡す。これにより (1) bind 失敗などの起動時エラーを
+	// select で即座に検知して返せる（チャネルが無いと signalCtx.Done() を
+	// 永遠に待ち続けてしまう）、(2) shutdown 後に ListenAndServe が実際に
+	// 抜けるのを待ってから戻れる。バッファ 1 は、main がエラー経路で先に抜けても
+	// goroutine の送信がブロックせず leak しないようにするため。
+	errCh := make(chan error, 1)
+	go func() {
+		err := server.ListenAndServe()
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			errCh <- err
+			return
+		}
+		errCh <- nil
+	}()
+	reg.Logger.Info(ctx, "http server started", "addr", cfg.HTTPAddr)
+
+	// 起動時エラーなら即返し、シグナルを受けたら shutdown へ進む。
+	select {
+	case err := <-errCh:
+		return err
+	case <-signalCtx.Done():
+	}
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	reg.Logger.Info(ctx, "http server shutting down")
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		return err
+	}
+	return <-errCh
 }
 
 func cmdImprove() error {

@@ -25,9 +25,11 @@ import (
 
 // Registry は CLI が必要とする、配線済みの usecase と repository を保持します。
 type Registry struct {
-	Scan   usecase.ScanUsecase
-	Engine usecase.EngineUsecase
-	Anneal usecase.AnnealUsecase
+	Scan    usecase.ScanUsecase
+	Engine  usecase.EngineUsecase
+	Anneal  usecase.AnnealUsecase
+	Webhook usecase.WebhookUsecase
+	Logger  gateway.Logger
 
 	Updates      repository.UpdateRepository
 	Evaluations  repository.EvaluationRepository
@@ -57,11 +59,14 @@ func New(cfg *config.Config) *Registry {
 	_, simulate := gitGW.(*git.Mock)
 	logger.Debug(context.Background(), "providers: llm="+llmGW.ProviderName()+" git="+gitGW.ProviderName()+
 		" notify="+notifier.ProviderName()+" metadata="+meta.ProviderName())
+	engine := usecase.NewEngineUsecase(updates, evals, improvements, llmGW, gitGW, notifier, ecosystems, scanner, logger, cfg.LowScoreThreshold, simulate)
 
 	return &Registry{
 		Scan:         usecase.NewScanUsecase(updates, meta, ecosystems, repoCfg, notifier, logger),
-		Engine:       usecase.NewEngineUsecase(updates, evals, improvements, llmGW, gitGW, notifier, ecosystems, scanner, logger, cfg.LowScoreThreshold, simulate),
+		Engine:       engine,
 		Anneal:       usecase.NewAnnealUsecase(evals, improvements, llmGW, notifier, logger, cfg.ImproveWindow, cfg.LowScoreThreshold),
+		Webhook:      usecase.NewWebhookUsecase(updates, engine, logger),
+		Logger:       logger,
 		Updates:      updates,
 		Evaluations:  evals,
 		Improvements: improvements,
