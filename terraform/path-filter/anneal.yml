@@ -10,3 +10,5 @@ terraform/resources/anneal-prd/secretmanager:
   - 'terraform/resources/anneal-prd/secretmanager/**'
 terraform/resources/anneal-prd/iam:
   - 'terraform/resources/anneal-prd/iam/**'
+terraform/resources/anneal-prd/cloudrun:
+  - 'terraform/resources/anneal-prd/cloudrun/**'

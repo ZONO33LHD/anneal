@@ -11,8 +11,9 @@ Anneal の Terraform は、PR で `plan`、`main` への merge で `apply` し�
 3. `firestore` — アプリ状態の永続化先（`(default)` DB, Native, asia-northeast1, 削除保護あり）
 4. `secretmanager` — `GITHUB_TOKEN` / `GITHUB_WEBHOOK_SECRET` / `GEMINI_API_KEY` / `SLACK_WEBHOOK_URL` の secret（箱のみ）
 5. `iam` — Cloud Run 実行用 SA（`anneal-runtime`）と最小権限（datastore.user / secretmanager.secretAccessor / logging.logWriter）
+6. `cloudrun` — Webhook 受け口（`serve`）を動かす Cloud Run サービス。runtime SA を使い、Firestore backend と secret（env 経由）を参照する。GitHub からの Webhook 到達のため公開（`run.invoker` = allUsers）だが、リクエストは serve 側の HMAC 署名検証で保護する
 
-Cloud Run サービス本体とイメージビルドは後続 PR で追加します。
+イメージの初回 push（`artifactregistry` への `:latest`）は `cloudrun` の apply より前に必要です（`image-build` ワークフローが供給）。Cloud Run のイメージは `lifecycle.ignore_changes` 対象で、実ロールアウトは deploy ワークフローが `:<sha>` で更新します。GitHub Webhook の送信先は `<service_uri>/webhooks/github` です。
 
 ### Secret の値の投入
 
