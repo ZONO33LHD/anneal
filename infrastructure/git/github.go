@@ -36,14 +36,15 @@ func (GitHub) ProviderName() string {
 	return "github"
 }
 
-// splitOwnerRepo は "owner/repo" を owner と repo に分解する（戻り値の順は owner, repo）。
-// "/" を含まない不正入力時は owner にそのまま入れ、repo は空にする。
-func splitOwnerRepo(repository string) (owner, repo string) {
-	parts := strings.SplitN(repository, "/", 2)
+// splitOwnerRepo は "owner/repo" 形式の fullName を owner と repo に分解する
+// （戻り値の順は owner, repo）。"/" を含まない不正入力時は owner にそのまま入れ、
+// repo は空にする。fullName は GitHub API の full_name に相当する。
+func splitOwnerRepo(fullName string) (owner, repo string) {
+	parts := strings.SplitN(fullName, "/", 2)
 	if len(parts) == 2 {
 		return parts[0], parts[1]
 	}
-	return repository, ""
+	return fullName, ""
 }
 
 func (g *GitHub) do(ctx context.Context, method, url string, body, out any) error {
