@@ -17,6 +17,7 @@ env:
   REGION: asia-northeast1
   REPOSITORY: cloudrun
   IMAGE: anneal
+  SERVICE: anneal
 
 jobs:
   build_push:
@@ -46,3 +47,19 @@ jobs:
           docker build -t "${IMAGE_BASE}:${GITHUB_SHA}" -t "${IMAGE_BASE}:latest" .
           docker push "${IMAGE_BASE}:${GITHUB_SHA}"
           docker push "${IMAGE_BASE}:latest"
+
+      # Cloud Run サービスが既に存在する場合のみ、push した :<sha> をロールアウトする。
+      # サービスは Terraform（cloudrun モジュール）が初回に作成するため、未作成の間は
+      # スキップして build/push までを成功扱いにする。
+      - name: Deploy to Cloud Run
+        run: |
+          IMAGE_BASE="${REGION}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${REPOSITORY}/${IMAGE}"
+          if gcloud run services describe "${SERVICE}" --region "${REGION}" --project "${{ secrets.GCP_PROJECT_ID }}" >/dev/null 2>&1; then
+            gcloud run deploy "${SERVICE}" \
+              --image "${IMAGE_BASE}:${GITHUB_SHA}" \
+              --region "${REGION}" \
+              --project "${{ secrets.GCP_PROJECT_ID }}" \
+              --quiet
+          else
+            echo "Cloud Run service '${SERVICE}' not provisioned yet; skipping deploy (run terraform cloudrun first)."
+          fi
