@@ -14,7 +14,11 @@ import (
 // analyzeImpact は（scanner ポート経由で）使用箇所を特定し、リスクと
 // 確信度（ドメインルール）を導出する。LLM は人間が読めるサマリーを付け足すだけ。
 func (e *engine) analyzeImpact(ctx context.Context, rec model.DependencyUpdate) model.ImpactAnalysis {
-	usage := e.scanner.UsageSites(rec.RepoPath, rec.PackageName)
+	usage, err := e.scanner.UsageSites(rec.RepoPath, rec.PackageName)
+	if err != nil {
+		// 走査失敗を「利用箇所なし」と取り違えないよう警告する（部分結果で継続）。
+		e.log.Warn("source scan degraded for " + rec.PackageName + ": " + err.Error())
+	}
 	breaking := rec.UpdateType == model.Major
 	risk := service.DeriveRisk(rec.UpdateType, len(usage), breaking)
 	confidence := service.DeriveConfidence(rec.UpdateType, len(usage))

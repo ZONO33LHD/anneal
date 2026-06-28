@@ -52,5 +52,8 @@ func (s *Slack) Notify(ctx context.Context, msg gateway.NotifyMessage) error {
 	defer func() {
 		_ = resp.Body.Close()
 	}()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("slack webhook: status %d", resp.StatusCode)
+	}
 	return nil
 }

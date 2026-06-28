@@ -47,15 +47,18 @@ func (d *DB) ensureLoaded() error {
 	if d.loaded {
 		return nil
 	}
-	d.loaded = true
 	if d.path == "" {
+		d.loaded = true
 		return nil
 	}
 	data, err := os.ReadFile(d.path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
+			d.loaded = true
 			return nil
 		}
+		// 読み込み失敗時は loaded を立てず、次回呼び出しで再試行できるようにする。
+		// （空 snapshot で既存ストアを上書きしてしまうのを防ぐ。）
 		return err
 	}
 	snap := emptySnapshot()
@@ -69,21 +72,42 @@ func (d *DB) ensureLoaded() error {
 		snap.Evaluations = map[string]model.AgentEvaluation{}
 	}
 	d.snap = snap
+	d.loaded = true
 	return nil
 }
 
+// flush は一時ファイルへ書いてから atomic rename することで、途中失敗による
+// JSON 破損や部分書き込みを防ぐ。
 func (d *DB) flush() error {
 	if d.path == "" {
 		return nil
 	}
-	if err := os.MkdirAll(filepath.Dir(d.path), 0o755); err != nil {
+	dir := filepath.Dir(d.path)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
 	data, err := json.MarshalIndent(d.snap, "", "  ")
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(d.path, data, 0o644)
+	tmp, err := os.CreateTemp(dir, ".store-*.json.tmp")
+	if err != nil {
+		return err
+	}
+	tmpName := tmp.Name()
+	defer func() { _ = os.Remove(tmpName) }() // rename 成功後は存在しないので無害
+	if _, err := tmp.Write(data); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if err := tmp.Sync(); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmpName, d.path)
 }
 
 // --- update 操作 ---

@@ -88,8 +88,12 @@ func pickNotifier(cfg *config.Config) gateway.Notifier {
 }
 
 func pickMetadata(cfg *config.Config) gateway.MetadataSource {
-	if !cfg.ForceMock && (cfg.GeminiAPIKey != "" || cfg.GitHubToken != "") {
-		return metadata.NewOSV()
+	// OSV / npm レジストリ / Go module proxy はいずれも匿名で利用できるため、
+	// ForceMock のときだけオフラインのモックを使い、それ以外は実データを参照する。
+	// （以前は secret の有無で mock に落ちており、通常 scan が実際の更新/CVE を
+	// 見逃していた。）
+	if cfg.ForceMock {
+		return metadata.NewMock()
 	}
-	return metadata.NewMock()
+	return metadata.NewOSV()
 }

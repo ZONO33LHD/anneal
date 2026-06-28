@@ -33,9 +33,13 @@ func (e *engine) createPRStep(ctx context.Context, rec model.DependencyUpdate) (
 		changed = c
 	}
 	title, body, branch := e.composePR(ctx, rec, changed)
+	base := rec.BaseBranch
+	if base == "" {
+		base = "main"
+	}
 	ref, err := e.git.CreateBranchAndPR(ctx, gateway.CreatePROptions{
 		Repository:   rec.Repository,
-		Base:         "main",
+		Base:         base,
 		Branch:       branch,
 		Title:        title,
 		Body:         body,
@@ -54,7 +58,7 @@ func (e *engine) createPRStep(ctx context.Context, rec model.DependencyUpdate) (
 		conf = fmt.Sprintf("%.2f", rec.Impact.Confidence)
 		risk = string(rec.Impact.RiskLevel)
 	}
-	_ = e.notifier.Notify(ctx, gateway.NotifyMessage{
+	notifyOrLog(ctx, e.notifier, e.log, gateway.NotifyMessage{
 		Level: level,
 		Title: "PR opened: " + title,
 		Body:  fmt.Sprintf("Risk %s · Confidence %s", risk, conf),
@@ -112,6 +116,10 @@ func (e *engine) fixStep(ctx context.Context, rec model.DependencyUpdate) (model
 	logSummary, attempts := "unknown failure", 0
 	if rec.CI != nil {
 		logSummary, attempts = rec.CI.LogSummary, rec.CI.Attempts
+	} else {
+		// 壊れた/古いストアで CI が nil のまま ci_failed になっていても、
+		// この後の *rec.CI で panic しないよう既定値で補う。
+		rec.CI = &model.CIResult{Status: "failed"}
 	}
 	category, fixable := service.ClassifyCIFailure(logSummary)
 
@@ -150,7 +158,7 @@ func (e *engine) fixStep(ctx context.Context, rec model.DependencyUpdate) (model
 		return rec, err
 	}
 	summary := e.ciFailureSummary(ctx, logSummary)
-	_ = e.notifier.Notify(ctx, gateway.NotifyMessage{
+	notifyOrLog(ctx, e.notifier, e.log, gateway.NotifyMessage{
 		Level: gateway.NotifyInfo,
 		Title: "Anneal auto-fixed CI: " + string(category),
 		Body:  summary,

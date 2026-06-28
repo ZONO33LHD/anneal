@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	neturl "net/url"
 	"strings"
 	"time"
 
@@ -102,21 +103,39 @@ func (g *GitHub) CheckCI(ctx context.Context, opts gateway.CICheckOptions) (gate
 	var out struct {
 		CheckRuns []struct {
 			Name       string `json:"name"`
-			Conclusion string `json:"conclusion"`
+			Status     string `json:"status"`     // queued | in_progress | completed
+			Conclusion string `json:"conclusion"` // success | neutral | failure | ...
 		} `json:"check_runs"`
 	}
-	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/commits/%s/check-runs", owner, repo, opts.Branch)
+	// ブランチ名は "anneal/npm/..." のように "/" を含むため、各パス要素を個別に
+	// エスケープしてパスが壊れないようにする。
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/commits/%s/check-runs",
+		neturl.PathEscape(owner), neturl.PathEscape(repo), neturl.PathEscape(opts.Branch))
 	if err := g.do(ctx, http.MethodGet, url, nil, &out); err != nil {
 		return gateway.CICheck{}, err
 	}
-	failed := make([]string, 0, len(out.CheckRuns))
+
+	// CI が未開始（check run なし）や未完了（queued/in_progress）を成功扱いしない。
+	// 完了済みの check がすべて success/neutral のときだけ pass とする。
+	if len(out.CheckRuns) == 0 {
+		return gateway.CICheck{Passed: false, LogSummary: "no check runs yet"}, nil
+	}
+	var pending, failed []string
 	for _, r := range out.CheckRuns {
-		if r.Conclusion != "" && r.Conclusion != ghConclusionSuccess && r.Conclusion != ghConclusionNeutral {
+		if r.Status != "completed" {
+			pending = append(pending, r.Name)
+			continue
+		}
+		if r.Conclusion != ghConclusionSuccess && r.Conclusion != ghConclusionNeutral {
 			failed = append(failed, r.Name)
 		}
 	}
-	if len(failed) == 0 {
+	switch {
+	case len(pending) > 0:
+		return gateway.CICheck{Passed: false, LogSummary: "checks not complete: " + strings.Join(pending, ", ")}, nil
+	case len(failed) > 0:
+		return gateway.CICheck{Passed: false, LogSummary: "Checks failed: " + strings.Join(failed, ", ")}, nil
+	default:
 		return gateway.CICheck{Passed: true}, nil
 	}
-	return gateway.CICheck{Passed: false, LogSummary: "Checks failed: " + strings.Join(failed, ", ")}, nil
 }

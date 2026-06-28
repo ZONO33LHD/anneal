@@ -70,9 +70,11 @@ func newRegistry() (*registry.Registry, error) {
 }
 
 func cmdScan(args []string) error {
-	fs := flag.NewFlagSet("scan", flag.ExitOnError)
+	fs := flag.NewFlagSet("scan", flag.ContinueOnError)
 	repo := fs.String("r", "", "logical repository name (owner/repo)")
-	_ = fs.Parse(args)
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
 	if fs.NArg() < 1 {
 		return fmt.Errorf("scan requires <repoPath>")
 	}

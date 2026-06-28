@@ -4,6 +4,7 @@ package ecosystem
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -66,6 +67,11 @@ func (NPM) ApplyUpdate(repoPath, name, target string) ([]string, error) {
 	updated := re.ReplaceAll(data, []byte("${1}${2}"+target+"${3}"))
 	var changed []string
 	if string(updated) != string(data) {
+		// 置換が JSON を壊していないことを書き込み前に検証する（同名キーが他箇所に
+		// あった場合などの破損を防ぐ安全弁）。
+		if !json.Valid(updated) {
+			return nil, fmt.Errorf("npm: updating %s would produce invalid package.json", name)
+		}
 		if err := os.WriteFile(pkgPath, updated, 0o644); err != nil {
 			return nil, err
 		}

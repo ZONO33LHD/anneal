@@ -24,17 +24,19 @@ func NewScanner() gateway.SourceScanner {
 	return Scanner{}
 }
 
-// UsageSites は、packageName を参照しているファイルの相対パスを返す。
-func (Scanner) UsageSites(repoPath, packageName string) []string {
+// UsageSites は、packageName を参照しているファイルの相対パスを返す。走査の
+// トップレベルが失敗した場合（リポジトリが読めない等）は error を返す。個々の
+// ファイルの読み取り失敗はスキップする。
+func (Scanner) UsageSites(repoPath, packageName string) ([]string, error) {
 	if repoPath == "" {
-		return nil
+		return nil, nil
 	}
 	pattern := usagePattern(packageName)
 	var sites []string
 	count := 0
-	_ = filepath.WalkDir(repoPath, func(p string, d fs.DirEntry, err error) error {
+	err := filepath.WalkDir(repoPath, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
-			return nil
+			return err
 		}
 		if count >= policy.MaxScanFiles {
 			return filepath.SkipAll
@@ -63,7 +65,10 @@ func (Scanner) UsageSites(repoPath, packageName string) []string {
 		}
 		return nil
 	})
-	return sites
+	if err != nil {
+		return sites, err
+	}
+	return sites, nil
 }
 
 func usagePattern(name string) *regexp.Regexp {

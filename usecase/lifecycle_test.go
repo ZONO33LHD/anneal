@@ -38,6 +38,20 @@ func hasTransition(rec model.DependencyUpdate, to model.State) bool {
 	return false
 }
 
+func mustScan(t *testing.T, ctx context.Context, reg *registry.Registry, work string) {
+	t.Helper()
+	if _, err := reg.Scan.Run(ctx, work, "acme/sample-repo"); err != nil {
+		t.Fatalf("scan: %v", err)
+	}
+}
+
+func mustDrive(t *testing.T, ctx context.Context, reg *registry.Registry) {
+	t.Helper()
+	if err := reg.Engine.Drive(ctx, 100); err != nil {
+		t.Fatalf("drive: %v", err)
+	}
+}
+
 func TestLifecycleDetect(t *testing.T) {
 	reg, work := setup(t)
 	res, err := reg.Scan.Run(context.Background(), work, "acme/sample-repo")
@@ -64,7 +78,7 @@ func TestLifecycleIdempotent(t *testing.T) {
 func TestLifecycleSecurityPatchToDone(t *testing.T) {
 	reg, work := setup(t)
 	ctx := context.Background()
-	_, _ = reg.Scan.Run(ctx, work, "acme/sample-repo")
+	mustScan(t, ctx, reg, work)
 	if err := reg.Engine.Drive(ctx, 100); err != nil {
 		t.Fatal(err)
 	}
@@ -81,8 +95,8 @@ func TestLifecycleSecurityPatchToDone(t *testing.T) {
 func TestLifecycleMajorNeedsApproval(t *testing.T) {
 	reg, work := setup(t)
 	ctx := context.Background()
-	_, _ = reg.Scan.Run(ctx, work, "acme/sample-repo")
-	_ = reg.Engine.Drive(ctx, 100)
+	mustScan(t, ctx, reg, work)
+	mustDrive(t, ctx, reg)
 	if !hasTransition(find(t, reg, "chalk"), model.StateAwaitingApproval) {
 		t.Error("chalk (major) should pass through awaiting_approval")
 	}
@@ -91,8 +105,8 @@ func TestLifecycleMajorNeedsApproval(t *testing.T) {
 func TestLifecycleSelfHeal(t *testing.T) {
 	reg, work := setup(t)
 	ctx := context.Background()
-	_, _ = reg.Scan.Run(ctx, work, "acme/sample-repo")
-	_ = reg.Engine.Drive(ctx, 100)
+	mustScan(t, ctx, reg, work)
+	mustDrive(t, ctx, reg)
 	axios := find(t, reg, "axios")
 	if !hasTransition(axios, model.StateCIFailed) ||
 		!hasTransition(axios, model.StateFixing) ||
@@ -104,8 +118,8 @@ func TestLifecycleSelfHeal(t *testing.T) {
 func TestLifecycleAnnealingFires(t *testing.T) {
 	reg, work := setup(t)
 	ctx := context.Background()
-	_, _ = reg.Scan.Run(ctx, work, "acme/sample-repo")
-	_ = reg.Engine.Drive(ctx, 100)
+	mustScan(t, ctx, reg, work)
+	mustDrive(t, ctx, reg)
 	if err := reg.Anneal.MaybeAnneal(ctx); err != nil {
 		t.Fatal(err)
 	}

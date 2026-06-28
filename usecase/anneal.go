@@ -128,7 +128,7 @@ func (a *annealUsecase) run(ctx context.Context, average float64) error {
 	if err := a.improvements.PutImprovement(imp); err != nil {
 		return err
 	}
-	_ = a.notifier.Notify(ctx, gateway.NotifyMessage{
+	notifyOrLog(ctx, a.notifier, a.log, gateway.NotifyMessage{
 		Level: gateway.NotifySuccess,
 		Title: "🔥 Annealing Loop produced an improvement candidate",
 		Body: fmt.Sprintf("Trigger: %s\nHypothesis: %s\nProposed (%s): %s",
