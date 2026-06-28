@@ -50,9 +50,11 @@ func New(cfg *config.Config) *Registry {
 	scanner := ecosystem.NewScanner()
 	repoCfg := repoconfig.NewLoader()
 
-	simulate := gitGW.Name() == "mock"
-	logger.Debug("providers: llm=" + llmGW.Name() + " git=" + gitGW.Name() +
-		" notify=" + notifier.Name() + " metadata=" + meta.Name())
+	// simulate は git バックエンドがモックのときだけ true（人間承認ゲート/CI を自動進行
+	// させデモを完結させる）。プロバイダ名の文字列ではなく具体型で判定する。
+	_, simulate := gitGW.(*git.Mock)
+	logger.Debug("providers: llm=" + llmGW.ProviderName() + " git=" + gitGW.ProviderName() +
+		" notify=" + notifier.ProviderName() + " metadata=" + meta.ProviderName())
 
 	return &Registry{
 		Scan:         usecase.NewScanUsecase(updates, meta, ecosystems, repoCfg, notifier, logger),
