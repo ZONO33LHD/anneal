@@ -92,7 +92,7 @@ func newRegistry() (*registry.Registry, error) {
 	if err != nil {
 		return nil, err
 	}
-	return registry.New(cfg), nil
+	return registry.New(cfg)
 }
 
 func cmdScan(args []string) error {
@@ -108,6 +108,7 @@ func cmdScan(args []string) error {
 	if err != nil {
 		return err
 	}
+	defer func() { _ = reg.Close() }()
 	res, err := reg.Scan.Run(runContext(), fs.Arg(0), *repo)
 	if err != nil {
 		return err
@@ -121,6 +122,7 @@ func cmdTick() error {
 	if err != nil {
 		return err
 	}
+	defer func() { _ = reg.Close() }()
 	ctx := runContext()
 	changed, err := reg.Engine.Tick(ctx)
 	if err != nil {
@@ -138,6 +140,7 @@ func cmdReconcile() error {
 	if err != nil {
 		return err
 	}
+	defer func() { _ = reg.Close() }()
 	ctx := runContext()
 	if _, err := reg.Engine.Reconcile(ctx); err != nil {
 		return err
@@ -150,7 +153,11 @@ func cmdServe() error {
 	if err != nil {
 		return err
 	}
-	reg := registry.New(cfg)
+	reg, err := registry.New(cfg)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = reg.Close() }()
 	mux := http.NewServeMux()
 	mux.Handle("/webhooks/github", webhookhttp.NewGitHubWebhookHandler(webhookhttp.GitHubWebhookOptions{
 		Secret:  cfg.GitHubWebhookSecret,
@@ -208,6 +215,7 @@ func cmdImprove() error {
 	if err != nil {
 		return err
 	}
+	defer func() { _ = reg.Close() }()
 	return reg.Anneal.MaybeAnneal(runContext())
 }
 
@@ -216,6 +224,7 @@ func cmdStatus() error {
 	if err != nil {
 		return err
 	}
+	defer func() { _ = reg.Close() }()
 	updates, err := reg.Updates.List()
 	if err != nil {
 		return err
@@ -258,7 +267,11 @@ func runDemo() error {
 		Verbose:           true,
 		LogJSON:           os.Getenv("ANNEAL_LOG_FORMAT") == "json",
 	}
-	reg := registry.New(cfg)
+	reg, err := registry.New(cfg)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = reg.Close() }()
 	ctx := runContext()
 
 	fmt.Println("\n=== 1) Detect ===")
