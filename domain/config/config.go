@@ -46,7 +46,7 @@ func Load() (*Config, error) {
 		FirestoreCollectionPrefix: os.Getenv("ANNEAL_FIRESTORE_PREFIX"),
 		ImproveWindow:             envInt("ANNEAL_IMPROVE_WINDOW", policy.DefaultImproveWindow),
 		LowScoreThreshold:         envFloat("ANNEAL_LOW_SCORE_THRESHOLD", policy.DefaultLowScoreThreshold),
-		HTTPAddr:                  envOr("ANNEAL_HTTP_ADDR", ":8080"),
+		HTTPAddr:                  envOr("ANNEAL_HTTP_ADDR", defaultHTTPAddr()),
 		GeminiAPIKey:              os.Getenv("GEMINI_API_KEY"),
 		GeminiModel:               envOr("ANNEAL_LLM_MODEL", "gemini-2.5-flash-lite"),
 		GitHubToken:               os.Getenv("GITHUB_TOKEN"),
@@ -63,6 +63,16 @@ const (
 	// StoreBackendFirestore は Firestore を使う永続化 backend である。
 	StoreBackendFirestore = "firestore"
 )
+
+// defaultHTTPAddr は HTTP リッスンアドレスの既定値を返す。Cloud Run などは待受ポートを
+// PORT 環境変数で注入するため、ANNEAL_HTTP_ADDR が未指定なら PORT を尊重する。
+// どちらも無ければ :8080 にフォールバックする。
+func defaultHTTPAddr() string {
+	if port := os.Getenv("PORT"); port != "" {
+		return ":" + port
+	}
+	return ":8080"
+}
 
 func envOr(key, def string) string {
 	if v := os.Getenv(key); v != "" {
