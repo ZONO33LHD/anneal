@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -56,6 +57,9 @@ func (h *githubWebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	}
 	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxWebhookBodyBytes))
 	if err != nil {
+		if h.log != nil {
+			h.log.Warn(r.Context(), "failed to read webhook body", "err", err.Error())
+		}
 		http.Error(w, "failed to read request body", http.StatusBadRequest)
 		return
 	}
@@ -67,7 +71,12 @@ func (h *githubWebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	eventName := r.Header.Get("X-GitHub-Event")
 	event, ok, err := parseGitHubEvent(eventName, body)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		// 解析エラーの詳細はサーバ側ログにだけ残し、クライアントへは汎用文言を返す
+		// （生のパースエラーを応答に載せて内部情報を漏らさないため）。
+		if h.log != nil {
+			h.log.Warn(r.Context(), "failed to parse webhook payload", "github_event", eventName, "err", err.Error())
+		}
+		http.Error(w, "invalid webhook payload", http.StatusBadRequest)
 		return
 	}
 	if !ok {
@@ -134,7 +143,7 @@ type checkSuitePayload struct {
 func parseCheckSuite(body []byte) (usecase.WebhookEvent, bool, error) {
 	var payload checkSuitePayload
 	if err := json.Unmarshal(body, &payload); err != nil {
-		return usecase.WebhookEvent{}, false, err
+		return usecase.WebhookEvent{}, false, fmt.Errorf("parse check_suite payload: %w", err)
 	}
 	if payload.Action != "completed" {
 		return usecase.WebhookEvent{}, false, nil
@@ -175,7 +184,7 @@ type pullRequestReviewPayload struct {
 func parsePullRequestReview(body []byte) (usecase.WebhookEvent, bool, error) {
 	var payload pullRequestReviewPayload
 	if err := json.Unmarshal(body, &payload); err != nil {
-		return usecase.WebhookEvent{}, false, err
+		return usecase.WebhookEvent{}, false, fmt.Errorf("parse pull_request_review payload: %w", err)
 	}
 	if payload.Action != "submitted" {
 		return usecase.WebhookEvent{}, false, nil
@@ -212,7 +221,7 @@ type pullRequestPayload struct {
 func parsePullRequest(body []byte) (usecase.WebhookEvent, bool, error) {
 	var payload pullRequestEnvelope
 	if err := json.Unmarshal(body, &payload); err != nil {
-		return usecase.WebhookEvent{}, false, err
+		return usecase.WebhookEvent{}, false, fmt.Errorf("parse pull_request payload: %w", err)
 	}
 	if payload.Action != "closed" {
 		return usecase.WebhookEvent{}, false, nil
