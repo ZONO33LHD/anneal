@@ -170,6 +170,12 @@ func cmdServe() error {
 	signalCtx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	// ListenAndServe はブロックするため別 goroutine で動かし、その終了結果を
+	// チャネルで main 側へ渡す。これにより (1) bind 失敗などの起動時エラーを
+	// select で即座に検知して返せる（チャネルが無いと signalCtx.Done() を
+	// 永遠に待ち続けてしまう）、(2) shutdown 後に ListenAndServe が実際に
+	// 抜けるのを待ってから戻れる。バッファ 1 は、main がエラー経路で先に抜けても
+	// goroutine の送信がブロックせず leak しないようにするため。
 	errCh := make(chan error, 1)
 	go func() {
 		err := server.ListenAndServe()
@@ -181,6 +187,7 @@ func cmdServe() error {
 	}()
 	reg.Logger.Info(ctx, "http server started", "addr", cfg.HTTPAddr)
 
+	// 起動時エラーなら即返し、シグナルを受けたら shutdown へ進む。
 	select {
 	case err := <-errCh:
 		return err
