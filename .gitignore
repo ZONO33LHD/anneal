@@ -14,3 +14,10 @@ dist/
 coverage.*
 
 .DS_Store
+
+# Terraform 作業ディレクトリ・state（プロバイダバイナリや tfstate はコミットしない）
+**/.terraform/
+**/.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+crash.log
