@@ -67,7 +67,7 @@ var scoreStates = map[model.State]bool{
 // 通知はベストエフォートだが、握りつぶさず可視化する。
 func notifyOrLog(ctx context.Context, n gateway.Notifier, log gateway.Logger, msg gateway.NotifyMessage) {
 	if err := n.Notify(ctx, msg); err != nil {
-		log.Warn("notify failed", "title", msg.Title, "err", err)
+		log.Warn(ctx, "notify failed", "title", msg.Title, "err", err)
 	}
 }
 
@@ -79,7 +79,7 @@ func (e *engine) Dispatch(ctx context.Context, rec model.DependencyUpdate) (move
 	defer func() {
 		if r := recover(); r != nil {
 			perr := fmt.Errorf("panic during dispatch: %v", r)
-			e.log.Error("panic during dispatch", perr, "update_key", rec.UpdateKey)
+			e.log.Error(ctx, "panic during dispatch", perr, "update_key", rec.UpdateKey)
 			errored := rec.ToError(perr.Error())
 			if putErr := e.updates.Put(errored); putErr != nil {
 				moved, out, err = false, rec, errors.Join(perr, putErr)
@@ -92,7 +92,7 @@ func (e *engine) Dispatch(ctx context.Context, rec model.DependencyUpdate) (move
 	next, stepped, advErr := e.advanceOneStep(ctx, rec)
 	if advErr != nil {
 		errored := rec.ToError(advErr.Error())
-		e.log.Error("dispatch failed; moving to error", advErr, "update_key", rec.UpdateKey)
+		e.log.Error(ctx, "dispatch failed; moving to error", advErr, "update_key", rec.UpdateKey)
 		if putErr := e.updates.Put(errored); putErr != nil {
 			// error 状態の保存にも失敗した場合は、両方の原因を呼び出し側へ返す
 			// （状態が古いまま成功扱いされるのを防ぐ）。
@@ -106,15 +106,15 @@ func (e *engine) Dispatch(ctx context.Context, rec model.DependencyUpdate) (move
 	if putErr := e.updates.Put(next); putErr != nil {
 		return false, rec, putErr
 	}
-	e.logTransition(rec.Status, next)
-	e.maybeScore(next)
+	e.logTransition(ctx, rec.Status, next)
+	e.maybeScore(ctx, next)
 	return true, next, nil
 }
 
 // logTransition はライフサイクルの遷移を 1 行で監査記録する。
 // 誰が(agent_version) / 何を(update_key, package) / どうした(from→to) /
 // なぜ(reason) / 結果(risk, ci, pr) を構造化フィールドで残す。
-func (e *engine) logTransition(from model.State, rec model.DependencyUpdate) {
+func (e *engine) logTransition(ctx context.Context, from model.State, rec model.DependencyUpdate) {
 	args := []any{
 		"update_key", rec.UpdateKey,
 		"package", rec.PackageName,
@@ -134,7 +134,7 @@ func (e *engine) logTransition(from model.State, rec model.DependencyUpdate) {
 	if rec.PullRequestURL != "" {
 		args = append(args, "pr", rec.PullRequestURL)
 	}
-	e.log.Step("lifecycle transition", args...)
+	e.log.Step(ctx, "lifecycle transition", args...)
 }
 
 // Tick はすべてのアクティブなレコードを1ステップ進める。
@@ -167,7 +167,7 @@ func (e *engine) Drive(ctx context.Context, maxRounds int) error {
 			return nil
 		}
 	}
-	e.log.Warn("drive: hit max rounds; some records may still be active")
+	e.log.Warn(ctx, "drive: hit max rounds; some records may still be active")
 	return nil
 }
 
@@ -178,7 +178,7 @@ func (e *engine) Reconcile(ctx context.Context) (int, error) {
 	if err != nil {
 		return changed, err
 	}
-	e.log.Info("reconcile complete", "advanced", changed)
+	e.log.Info(ctx, "reconcile complete", "advanced", changed)
 	return changed, nil
 }
 
@@ -291,7 +291,7 @@ func simulatedComments(rec model.DependencyUpdate) *int {
 	return &n
 }
 
-func (e *engine) maybeScore(rec model.DependencyUpdate) {
+func (e *engine) maybeScore(ctx context.Context, rec model.DependencyUpdate) {
 	if !scoreStates[rec.Status] {
 		return
 	}
@@ -299,13 +299,13 @@ func (e *engine) maybeScore(rec model.DependencyUpdate) {
 	eval := service.BuildEvaluation(rec, prev)
 	_ = e.evals.Put(eval)
 	if eval.ScoreStatus == model.ScoreFinal {
-		e.recordIfLowScore(rec, eval)
+		e.recordIfLowScore(ctx, rec, eval)
 	}
 }
 
 // recordIfLowScore は確定した閾値未満の評価を失敗ケースとして永続化し
 // （冪等: update_key ごとに最大1件）、Annealing Loop が学習できるようにする。
-func (e *engine) recordIfLowScore(rec model.DependencyUpdate, eval model.AgentEvaluation) {
+func (e *engine) recordIfLowScore(ctx context.Context, rec model.DependencyUpdate, eval model.AgentEvaluation) {
 	if eval.TotalScore >= e.lowScoreThreshold {
 		return
 	}
@@ -327,5 +327,5 @@ func (e *engine) recordIfLowScore(rec model.DependencyUpdate, eval model.AgentEv
 		Snapshot:     snapshot,
 		CreatedAt:    model.NowString(),
 	})
-	e.log.Warn("recorded failure case", "update_key", rec.UpdateKey, "score", eval.TotalScore)
+	e.log.Warn(ctx, "recorded failure case", "update_key", rec.UpdateKey, "score", eval.TotalScore)
 }

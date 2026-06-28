@@ -51,7 +51,7 @@ func (a *annealUsecase) MaybeAnneal(ctx context.Context) error {
 	if sampled == 0 {
 		return nil
 	}
-	a.log.Info("score check", "average", avg, "sampled", sampled, "threshold", a.threshold)
+	a.log.Info(ctx, "score check", "average", avg, "sampled", sampled, "threshold", a.threshold)
 	if avg >= a.threshold {
 		return nil
 	}
@@ -92,7 +92,7 @@ func (a *annealUsecase) run(ctx context.Context, average float64) error {
 		return err
 	}
 	if len(failures) == 0 {
-		a.log.Info("annealing: no failure cases to learn from")
+		a.log.Info(ctx, "annealing: no failure cases to learn from")
 		return nil
 	}
 
@@ -134,7 +134,7 @@ func (a *annealUsecase) run(ctx context.Context, average float64) error {
 		Body: fmt.Sprintf("Trigger: %s\nHypothesis: %s\nProposed (%s): %s",
 			imp.Trigger, hypothesis, imp.CandidateVersion, proposed),
 	})
-	a.log.Step("annealing: candidate generated", "improvement_id", imp.ImprovementID)
+	a.log.Step(ctx, "annealing: candidate generated", "improvement_id", imp.ImprovementID)
 	return nil
 }
 

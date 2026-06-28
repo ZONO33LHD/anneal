@@ -128,7 +128,7 @@ func (e *engine) fixStep(ctx context.Context, rec model.DependencyUpdate) (model
 		ci := *rec.CI
 		ci.FailureCategory, ci.Fixable = category, false
 		next.CI = &ci
-		e.log.Warn("repeated CI failures, escalating", "update_key", rec.UpdateKey)
+		e.log.Warn(ctx, "repeated CI failures, escalating", "update_key", rec.UpdateKey)
 		return next, nil
 	}
 

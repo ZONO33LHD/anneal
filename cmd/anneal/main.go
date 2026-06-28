@@ -10,6 +10,7 @@ import (
 	"sort"
 
 	"github.com/ZONO33LHD/anneal/domain/config"
+	"github.com/ZONO33LHD/anneal/domain/ctxkey"
 	"github.com/ZONO33LHD/anneal/domain/policy"
 	applog "github.com/ZONO33LHD/anneal/infrastructure/log"
 	"github.com/ZONO33LHD/anneal/registry"
@@ -28,7 +29,7 @@ func logFatal(err error) {
 	if cfg, cerr := config.Load(); cerr == nil {
 		opts.JSON, opts.Verbose = cfg.LogJSON, cfg.Verbose
 	}
-	applog.New(opts).Error("command failed", err)
+	applog.New(opts).Error(context.Background(), "command failed", err)
 }
 
 func run(args []string) error {
@@ -71,6 +72,12 @@ Usage:
 `)
 }
 
+// runContext は 1 コマンド実行ぶんを相関させるトレース ID を載せた context を返す。
+func runContext() context.Context {
+	ctx, _ := ctxkey.EnsureTraceID(context.Background())
+	return ctx
+}
+
 func newRegistry() (*registry.Registry, error) {
 	cfg, err := config.Load()
 	if err != nil {
@@ -92,7 +99,7 @@ func cmdScan(args []string) error {
 	if err != nil {
 		return err
 	}
-	res, err := reg.Scan.Run(context.Background(), fs.Arg(0), *repo)
+	res, err := reg.Scan.Run(runContext(), fs.Arg(0), *repo)
 	if err != nil {
 		return err
 	}
@@ -105,7 +112,7 @@ func cmdTick() error {
 	if err != nil {
 		return err
 	}
-	ctx := context.Background()
+	ctx := runContext()
 	changed, err := reg.Engine.Tick(ctx)
 	if err != nil {
 		return err
@@ -122,7 +129,7 @@ func cmdReconcile() error {
 	if err != nil {
 		return err
 	}
-	ctx := context.Background()
+	ctx := runContext()
 	if _, err := reg.Engine.Reconcile(ctx); err != nil {
 		return err
 	}
@@ -134,7 +141,7 @@ func cmdImprove() error {
 	if err != nil {
 		return err
 	}
-	return reg.Anneal.MaybeAnneal(context.Background())
+	return reg.Anneal.MaybeAnneal(runContext())
 }
 
 func cmdStatus() error {
@@ -185,7 +192,7 @@ func runDemo() error {
 		LogJSON:           os.Getenv("ANNEAL_LOG_FORMAT") == "json",
 	}
 	reg := registry.New(cfg)
-	ctx := context.Background()
+	ctx := runContext()
 
 	fmt.Println("\n=== 1) Detect ===")
 	res, err := reg.Scan.Run(ctx, work, "acme/sample-repo")

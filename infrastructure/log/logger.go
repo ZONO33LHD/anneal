@@ -1,6 +1,7 @@
 // Package log は Logger ポートを log/slog で実装する。ローカルでは読みやすい text、
 // 本番（Cloud Run 等）では severity 付き JSON を出力でき、各行に呼び出し元
-// （source: file:line）を付ける。Error はエラーとスタックトレースを添えて記録する。
+// （source: file:line）と相関 ID（trace_id）を付ける。Error はエラーとスタック
+// トレースを添えて記録する。
 package log
 
 import (
@@ -12,6 +13,7 @@ import (
 	"runtime/debug"
 	"time"
 
+	"github.com/ZONO33LHD/anneal/domain/ctxkey"
 	"github.com/ZONO33LHD/anneal/domain/gateway"
 )
 
@@ -40,19 +42,33 @@ func New(opts Options) gateway.Logger {
 		w = os.Stdout
 	}
 	ho := &slog.HandlerOptions{Level: level, AddSource: true, ReplaceAttr: replaceAttr}
-	var h slog.Handler
+	var base slog.Handler
 	if opts.JSON {
-		h = slog.NewJSONHandler(w, ho)
+		base = slog.NewJSONHandler(w, ho)
 	} else {
-		h = slog.NewTextHandler(w, ho)
+		base = slog.NewTextHandler(w, ho)
 	}
-	return &slogLogger{h: h}
+	return &slogLogger{h: contextHandler{base}}
+}
+
+// contextHandler は context から相関 ID を取り出してすべてのレコードへ付与する。
+type contextHandler struct {
+	slog.Handler
+}
+
+func (h contextHandler) Handle(ctx context.Context, r slog.Record) error {
+	if id := ctxkey.TraceID(ctx); id != "" {
+		r.AddAttrs(slog.String("trace_id", id))
+	}
+	return h.Handler.Handle(ctx, r)
 }
 
 // log はハンドラを直接呼び、呼び出し元（このラッパーの 1 つ上）の PC を記録する。
 // これにより source が logger.go ではなく実際の呼び出し箇所を指す。
-func (s *slogLogger) log(level slog.Level, msg string, args ...any) {
-	ctx := context.Background()
+func (s *slogLogger) log(ctx context.Context, level slog.Level, msg string, args ...any) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	if !s.h.Enabled(ctx, level) {
 		return
 	}
@@ -63,16 +79,24 @@ func (s *slogLogger) log(level slog.Level, msg string, args ...any) {
 	_ = s.h.Handle(ctx, rec)
 }
 
-func (s *slogLogger) Debug(msg string, args ...any) { s.log(slog.LevelDebug, msg, args...) }
-func (s *slogLogger) Info(msg string, args ...any)  { s.log(slog.LevelInfo, msg, args...) }
-func (s *slogLogger) Warn(msg string, args ...any)  { s.log(slog.LevelWarn, msg, args...) }
-func (s *slogLogger) Step(msg string, args ...any)  { s.log(levelStep, msg, args...) }
+func (s *slogLogger) Debug(ctx context.Context, msg string, args ...any) {
+	s.log(ctx, slog.LevelDebug, msg, args...)
+}
+func (s *slogLogger) Info(ctx context.Context, msg string, args ...any) {
+	s.log(ctx, slog.LevelInfo, msg, args...)
+}
+func (s *slogLogger) Warn(ctx context.Context, msg string, args ...any) {
+	s.log(ctx, slog.LevelWarn, msg, args...)
+}
+func (s *slogLogger) Step(ctx context.Context, msg string, args ...any) {
+	s.log(ctx, levelStep, msg, args...)
+}
 
 // Error はエラーとスタックトレースを添えて記録する。stack は呼び出し時点の
 // goroutine スタックで、障害発生箇所の追跡に使える。
-func (s *slogLogger) Error(msg string, err error, args ...any) {
+func (s *slogLogger) Error(ctx context.Context, msg string, err error, args ...any) {
 	args = append(args, slog.Any("err", err), slog.String("stack", string(debug.Stack())))
-	s.log(slog.LevelError, msg, args...)
+	s.log(ctx, slog.LevelError, msg, args...)
 }
 
 // replaceAttr は level を GCP Cloud Logging が解釈する severity に変換する。
