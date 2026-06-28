@@ -8,6 +8,8 @@ package registry
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"github.com/ZONO33LHD/anneal/domain/config"
 	"github.com/ZONO33LHD/anneal/domain/gateway"
@@ -19,6 +21,7 @@ import (
 	"github.com/ZONO33LHD/anneal/infrastructure/metadata"
 	"github.com/ZONO33LHD/anneal/infrastructure/notify"
 	"github.com/ZONO33LHD/anneal/infrastructure/persistence"
+	firestorep "github.com/ZONO33LHD/anneal/infrastructure/persistence/firestore"
 	"github.com/ZONO33LHD/anneal/infrastructure/repoconfig"
 	"github.com/ZONO33LHD/anneal/usecase"
 )
@@ -34,17 +37,39 @@ type Registry struct {
 	Updates      repository.UpdateRepository
 	Evaluations  repository.EvaluationRepository
 	Improvements repository.ImprovementRepository
+
+	// closer は backend が抱えるリソース（Firestore クライアント等）を解放する。
+	// JSON backend では nil。
+	closer func() error
+}
+
+// Close は backend が保持するリソースを解放する。長時間動く serve では
+// 終了時に必ず呼ぶこと。JSON backend では何もしない。
+func (r *Registry) Close() error {
+	if r.closer == nil {
+		return nil
+	}
+	return r.closer()
+}
+
+// repoSet は選択した backend のリポジトリ群と、その解放処理をまとめる。
+type repoSet struct {
+	updates      repository.UpdateRepository
+	evaluations  repository.EvaluationRepository
+	improvements repository.ImprovementRepository
+	closer       func() error
 }
 
 // New は config からアプリケーションを組み立て、利用可能な secret ごとに実装とモックの
 // provider を選択します（ForceMock が設定されている場合を除く）。
-func New(cfg *config.Config) *Registry {
+func New(cfg *config.Config) (*Registry, error) {
 	logger := log.New(log.Options{Verbose: cfg.Verbose, JSON: cfg.LogJSON})
 
-	db := persistence.NewDB(cfg.StorePath)
-	updates := persistence.NewUpdateRepository(db)
-	evals := persistence.NewEvaluationRepository(db)
-	improvements := persistence.NewImprovementRepository(db)
+	repos, err := pickRepositories(cfg)
+	if err != nil {
+		return nil, err
+	}
+	updates, evals, improvements := repos.updates, repos.evaluations, repos.improvements
 
 	llmGW := pickLLM(cfg)
 	gitGW := pickGit(cfg, logger)
@@ -70,6 +95,41 @@ func New(cfg *config.Config) *Registry {
 		Updates:      updates,
 		Evaluations:  evals,
 		Improvements: improvements,
+		closer:       repos.closer,
+	}, nil
+}
+
+func pickRepositories(cfg *config.Config) (*repoSet, error) {
+	backend := strings.TrimSpace(cfg.StoreBackend)
+	if backend == "" || cfg.ForceMock {
+		backend = config.StoreBackendJSON
+	}
+
+	switch backend {
+	case config.StoreBackendJSON:
+		db := persistence.NewDB(cfg.StorePath)
+		return &repoSet{
+			updates:      persistence.NewUpdateRepository(db),
+			evaluations:  persistence.NewEvaluationRepository(db),
+			improvements: persistence.NewImprovementRepository(db),
+		}, nil
+	case config.StoreBackendFirestore:
+		if cfg.FirestoreProjectID == "" {
+			return nil, fmt.Errorf("firestore backend requires ANNEAL_FIRESTORE_PROJECT or GOOGLE_CLOUD_PROJECT")
+		}
+		client, err := firestorep.NewClient(context.Background(), cfg.FirestoreProjectID)
+		if err != nil {
+			return nil, err
+		}
+		opt := firestorep.WithCollectionPrefix(cfg.FirestoreCollectionPrefix)
+		return &repoSet{
+			updates:      firestorep.NewUpdateRepositoryWithOptions(client, opt),
+			evaluations:  firestorep.NewEvaluationRepositoryWithOptions(client, opt),
+			improvements: firestorep.NewImprovementRepositoryWithOptions(client, opt),
+			closer:       client.Close,
+		}, nil
+	default:
+		return nil, fmt.Errorf("unknown store backend: %s", backend)
 	}
 }
 

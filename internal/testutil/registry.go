@@ -7,10 +7,14 @@ import (
 
 // NewRegistry はテスト用に、すべてモックでインメモリな registry を構築します。
 func NewRegistry() *registry.Registry {
-	return registry.New(&config.Config{
+	reg, err := registry.New(&config.Config{
 		StorePath:         "", // インメモリ
 		ImproveWindow:     5,
 		LowScoreThreshold: 90,
 		ForceMock:         true,
 	})
+	if err != nil {
+		panic(err)
+	}
+	return reg
 }
