@@ -1,0 +1,11 @@
+# ビルドコンテキストから除外して転送量とキャッシュ無効化を減らす。
+.git
+.github
+.anneal
+terraform
+docs
+*.md
+.env
+fixtures
+**/*_test.go
+.DS_Store
