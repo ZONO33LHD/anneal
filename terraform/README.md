@@ -10,6 +10,8 @@ Terraform Actions を動かす前に、リポジトリに以下の secrets を�
 - `GCP_WIF_PROVIDER`: GitHub Actions 用 Workload Identity Provider
 - `GCP_SERVICE_ACCOUNT`: Terraform を実行する service account のメールアドレス
 
+PR では secrets が未設定でも `fmt` / `validate` までは実行し、GCP 認証が必要な `plan` はスキップします。`main` merge 後の `apply` ではこれらの secrets が必須です。
+
 ## Backend
 
 Terraform state は GCS backend を使います。初回実行前に bucket を事前作成してください。

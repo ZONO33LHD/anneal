@@ -8,5 +8,5 @@ endif
 	$(eval TFSTATE_PREFIX := $(shell echo $(PREFIX_DIR) | sed -e 's/\/$$//' | sed -e 's/\//./g'))
 	$(eval TERRAFORM_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST)))))
 	cp $(TERRAFORM_DIR)/init.tf $(PWD)
-	terraform init -backend-config "prefix=$(TFSTATE_PREFIX)"
+	terraform init -reconfigure -backend-config "prefix=$(TFSTATE_PREFIX)"
 .PHONY: terraform-init
