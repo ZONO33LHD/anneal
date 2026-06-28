@@ -1,0 +1,141 @@
+name: terraform-plan
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize]
+    paths:
+      - 'terraform/init.tf'
+      - 'terraform/Makefile'
+      - 'terraform/path-filter/anneal.yml'
+      - 'terraform/resources/anneal-prd/**'
+      - '.github/workflows/terraform-*.yml'
+
+jobs:
+  build_target:
+    name: Build Target
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      target_dirs: ${{ steps.filter.outputs.targetdirs }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 1
+          persist-credentials: true
+
+      - uses: dorny/paths-filter@d1c1ffe0248fe513906c8e24db8ea791d46f8590 # v3.0.3
+        id: changes
+        with:
+          filters: ./terraform/path-filter/anneal.yml
+
+      - id: filter
+        run: |
+          TARGETDIRS=$(echo '${{ toJSON(steps.changes.outputs) }}' | jq '. | to_entries[] | select(.value == "true") | .key')
+          echo "targetdirs=$(echo $TARGETDIRS | jq -sc '.')" >> "$GITHUB_OUTPUT"
+
+  plans:
+    name: Plan
+    runs-on: ubuntu-latest
+    needs: build_target
+    if: needs.build_target.outputs.target_dirs != '[]'
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: write
+    strategy:
+      max-parallel: 1
+      matrix:
+        dir: ${{ fromJson(needs.build_target.outputs.target_dirs) }}
+    env:
+      TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 1
+          persist-credentials: true
+
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+          audience: https://github.com/${{ github.repository }}
+
+      - uses: hashicorp/setup-terraform@5e8dbf3c6d9deaf4193ca7a8fb23f2ac83bb6c85 # v4.0.0
+        with:
+          terraform_version: 1.12.1
+
+      - name: Terraform Init
+        run: make -f ../../../Makefile terraform-init PREFIX_DIR=${{ matrix.dir }}
+        working-directory: ${{ matrix.dir }}
+
+      - name: Download modules
+        run: terraform get
+        working-directory: ${{ matrix.dir }}
+
+      - name: fmt
+        id: fmt
+        run: terraform fmt -check -recursive
+        working-directory: ${{ matrix.dir }}
+        continue-on-error: true
+
+      - name: validate
+        id: validate
+        run: terraform validate -no-color
+        working-directory: ${{ matrix.dir }}
+        continue-on-error: true
+
+      - name: plan
+        id: plan
+        run: terraform plan -no-color
+        working-directory: ${{ matrix.dir }}
+        continue-on-error: true
+
+      - uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        env:
+          PLAN: "terraform\n${{ steps.plan.outputs.stdout }}"
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const title = ('${{ steps.fmt.outcome }}' !== 'success' || '${{ steps.validate.outcome }}' !== 'success' || '${{ steps.plan.outcome }}' !== 'success')
+              ? 'Several checks have failed'
+              : 'All checks have passed';
+            const output = `# ${title}
+            ## \`${{ matrix.dir }}\`
+            #### fmt: \`${{ steps.fmt.outcome }}\`
+            #### validate: \`${{ steps.validate.outcome }}\`
+            #### plan: \`${{ steps.plan.outcome }}\`
+            <details><summary>Show Plan</summary>
+
+            \`\`\`${process.env.PLAN}\`\`\`
+
+            </details>`;
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            });
+
+      - name: Fail if fmt, validate, or plan failed
+        if: steps.fmt.outcome != 'success' || steps.validate.outcome != 'success' || steps.plan.outcome != 'success'
+        run: exit 1
+
+  check_status:
+    name: Check Status
+    runs-on: ubuntu-latest
+    needs: [build_target, plans]
+    if: always()
+    steps:
+      - name: Aggregate result
+        run: |
+          if [ "${{ needs.build_target.result }}" != "success" ]; then
+            echo "build_target failed"; exit 1
+          fi
+          if [ "${{ needs.plans.result }}" != "success" ] && [ "${{ needs.plans.result }}" != "skipped" ]; then
+            echo "plans failed"; exit 1
+          fi
+          echo "Terraform plan is success"
