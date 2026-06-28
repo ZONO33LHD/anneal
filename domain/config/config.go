@@ -16,12 +16,14 @@ type Config struct {
 	StorePath         string
 	ImproveWindow     int
 	LowScoreThreshold float64
+	HTTPAddr          string
 
 	// シークレット。空値はその機能について「モックを使う」ことを意味する。
-	GeminiAPIKey    string
-	GeminiModel     string
-	GitHubToken     string
-	SlackWebhookURL string
+	GeminiAPIKey        string
+	GeminiModel         string
+	GitHubToken         string
+	GitHubWebhookSecret string
+	SlackWebhookURL     string
 
 	// ForceMock はすべてのプロバイダをモック/オフライン形態に強制する（デモで使用）。
 	ForceMock bool
@@ -35,15 +37,17 @@ type Config struct {
 func Load() (*Config, error) {
 	loadDotEnv(".env")
 	return &Config{
-		StorePath:         envOr("ANNEAL_STORE_PATH", ".anneal/store.json"),
-		ImproveWindow:     envInt("ANNEAL_IMPROVE_WINDOW", policy.DefaultImproveWindow),
-		LowScoreThreshold: envFloat("ANNEAL_LOW_SCORE_THRESHOLD", policy.DefaultLowScoreThreshold),
-		GeminiAPIKey:      os.Getenv("GEMINI_API_KEY"),
-		GeminiModel:       envOr("ANNEAL_LLM_MODEL", "gemini-2.5-flash-lite"),
-		GitHubToken:       os.Getenv("GITHUB_TOKEN"),
-		SlackWebhookURL:   os.Getenv("SLACK_WEBHOOK_URL"),
-		Verbose:           os.Getenv("ANNEAL_DEBUG") == "1",
-		LogJSON:           os.Getenv("ANNEAL_LOG_FORMAT") == "json",
+		StorePath:           envOr("ANNEAL_STORE_PATH", ".anneal/store.json"),
+		ImproveWindow:       envInt("ANNEAL_IMPROVE_WINDOW", policy.DefaultImproveWindow),
+		LowScoreThreshold:   envFloat("ANNEAL_LOW_SCORE_THRESHOLD", policy.DefaultLowScoreThreshold),
+		HTTPAddr:            envOr("ANNEAL_HTTP_ADDR", ":8080"),
+		GeminiAPIKey:        os.Getenv("GEMINI_API_KEY"),
+		GeminiModel:         envOr("ANNEAL_LLM_MODEL", "gemini-2.5-flash-lite"),
+		GitHubToken:         os.Getenv("GITHUB_TOKEN"),
+		GitHubWebhookSecret: os.Getenv("GITHUB_WEBHOOK_SECRET"),
+		SlackWebhookURL:     os.Getenv("SLACK_WEBHOOK_URL"),
+		Verbose:             os.Getenv("ANNEAL_DEBUG") == "1",
+		LogJSON:             os.Getenv("ANNEAL_LOG_FORMAT") == "json",
 	}, nil
 }
 
