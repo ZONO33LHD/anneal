@@ -67,32 +67,74 @@ var scoreStates = map[model.State]bool{
 // 通知はベストエフォートだが、握りつぶさず可視化する。
 func notifyOrLog(ctx context.Context, n gateway.Notifier, log gateway.Logger, msg gateway.NotifyMessage) {
 	if err := n.Notify(ctx, msg); err != nil {
-		log.Warn("notify failed: " + err.Error())
+		log.Warn(ctx, "notify failed", "title", msg.Title, "err", err)
 	}
 }
 
 // Dispatch は単一のレコードを意味のある1ステップだけ進めて永続化し、
 // その評価を再計算する。エラー時はレコードを error 状態へ移す。
-func (e *engine) Dispatch(ctx context.Context, rec model.DependencyUpdate) (bool, model.DependencyUpdate, error) {
-	next, moved, err := e.advanceOneStep(ctx, rec)
-	if err != nil {
-		errored := rec.ToError(err.Error())
-		e.log.Warn("dispatch failed; moving to error: " + err.Error())
+func (e *engine) Dispatch(ctx context.Context, rec model.DependencyUpdate) (moved bool, out model.DependencyUpdate, err error) {
+	// 1 レコードの panic で tick 全体を巻き込まないよう recover し、スタックトレース付きで
+	// 記録したうえで当該レコードを error 状態へ退避する。
+	defer func() {
+		if r := recover(); r != nil {
+			perr := fmt.Errorf("panic during dispatch: %v", r)
+			e.log.Error(ctx, "panic during dispatch", perr, "update_key", rec.UpdateKey)
+			errored := rec.ToError(perr.Error())
+			if putErr := e.updates.Put(errored); putErr != nil {
+				moved, out, err = false, rec, errors.Join(perr, putErr)
+				return
+			}
+			moved, out, err = true, errored, nil
+		}
+	}()
+
+	next, stepped, advErr := e.advanceOneStep(ctx, rec)
+	if advErr != nil {
+		errored := rec.ToError(advErr.Error())
+		e.log.Error(ctx, "dispatch failed; moving to error", advErr, "update_key", rec.UpdateKey)
 		if putErr := e.updates.Put(errored); putErr != nil {
 			// error 状態の保存にも失敗した場合は、両方の原因を呼び出し側へ返す
 			// （状態が古いまま成功扱いされるのを防ぐ）。
-			return false, rec, errors.Join(err, putErr)
+			return false, rec, errors.Join(advErr, putErr)
 		}
 		return true, errored, nil
 	}
-	if !moved {
+	if !stepped {
 		return false, rec, nil
 	}
-	if err := e.updates.Put(next); err != nil {
-		return false, rec, err
+	if putErr := e.updates.Put(next); putErr != nil {
+		return false, rec, putErr
 	}
-	e.maybeScore(next)
+	e.logTransition(ctx, rec.Status, next)
+	e.maybeScore(ctx, next)
 	return true, next, nil
+}
+
+// logTransition はライフサイクルの遷移を 1 行で監査記録する。
+// 誰が(agent_version) / 何を(update_key, package) / どうした(from→to) /
+// なぜ(reason) / 結果(risk, ci, pr) を構造化フィールドで残す。
+func (e *engine) logTransition(ctx context.Context, from model.State, rec model.DependencyUpdate) {
+	args := []any{
+		"update_key", rec.UpdateKey,
+		"package", rec.PackageName,
+		"from", string(from),
+		"to", string(rec.Status),
+		"agent_version", rec.AgentVersion,
+	}
+	if n := len(rec.History); n > 0 {
+		args = append(args, "reason", rec.History[n-1].Reason)
+	}
+	if rec.Impact != nil {
+		args = append(args, "risk", string(rec.Impact.RiskLevel))
+	}
+	if rec.CI != nil {
+		args = append(args, "ci_status", rec.CI.Status, "ci_attempt", rec.CI.Attempts)
+	}
+	if rec.PullRequestURL != "" {
+		args = append(args, "pr", rec.PullRequestURL)
+	}
+	e.log.Step(ctx, "lifecycle transition", args...)
 }
 
 // Tick はすべてのアクティブなレコードを1ステップ進める。
@@ -125,7 +167,7 @@ func (e *engine) Drive(ctx context.Context, maxRounds int) error {
 			return nil
 		}
 	}
-	e.log.Warn("drive: hit max rounds; some records may still be active")
+	e.log.Warn(ctx, "drive: hit max rounds; some records may still be active")
 	return nil
 }
 
@@ -136,7 +178,7 @@ func (e *engine) Reconcile(ctx context.Context) (int, error) {
 	if err != nil {
 		return changed, err
 	}
-	e.log.Info(fmt.Sprintf("reconcile complete advanced=%d", changed))
+	e.log.Info(ctx, "reconcile complete", "advanced", changed)
 	return changed, nil
 }
 
@@ -249,7 +291,7 @@ func simulatedComments(rec model.DependencyUpdate) *int {
 	return &n
 }
 
-func (e *engine) maybeScore(rec model.DependencyUpdate) {
+func (e *engine) maybeScore(ctx context.Context, rec model.DependencyUpdate) {
 	if !scoreStates[rec.Status] {
 		return
 	}
@@ -257,13 +299,13 @@ func (e *engine) maybeScore(rec model.DependencyUpdate) {
 	eval := service.BuildEvaluation(rec, prev)
 	_ = e.evals.Put(eval)
 	if eval.ScoreStatus == model.ScoreFinal {
-		e.recordIfLowScore(rec, eval)
+		e.recordIfLowScore(ctx, rec, eval)
 	}
 }
 
 // recordIfLowScore は確定した閾値未満の評価を失敗ケースとして永続化し
 // （冪等: update_key ごとに最大1件）、Annealing Loop が学習できるようにする。
-func (e *engine) recordIfLowScore(rec model.DependencyUpdate, eval model.AgentEvaluation) {
+func (e *engine) recordIfLowScore(ctx context.Context, rec model.DependencyUpdate, eval model.AgentEvaluation) {
 	if eval.TotalScore >= e.lowScoreThreshold {
 		return
 	}
@@ -285,5 +327,5 @@ func (e *engine) recordIfLowScore(rec model.DependencyUpdate, eval model.AgentEv
 		Snapshot:     snapshot,
 		CreatedAt:    model.NowString(),
 	})
-	e.log.Warn("recorded failure case " + rec.UpdateKey)
+	e.log.Warn(ctx, "recorded failure case", "update_key", rec.UpdateKey, "score", eval.TotalScore)
 }

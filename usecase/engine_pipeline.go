@@ -18,7 +18,6 @@ func (e *engine) analyzeStep(ctx context.Context, rec model.DependencyUpdate) (m
 	}
 	next.Impact = &impact
 	next.RiskLevel = impact.RiskLevel
-	e.log.Step(fmt.Sprintf("analyzing %s risk=%s", rec.UpdateKey, impact.RiskLevel))
 	return next, nil
 }
 
@@ -72,7 +71,6 @@ func (e *engine) createPRStep(ctx context.Context, rec model.DependencyUpdate) (
 	next.Branch = branch
 	next.PullRequestURL = ref.URL
 	next.PullRequestNumber = ref.Number
-	e.log.Step("pr_created " + rec.UpdateKey + " " + ref.URL)
 	return next, nil
 }
 
@@ -99,7 +97,6 @@ func (e *engine) ciStep(ctx context.Context, rec model.DependencyUpdate) (model.
 			return rec, err
 		}
 		next.CI = &model.CIResult{Status: "passed", Attempts: attempt}
-		e.log.Step(fmt.Sprintf("ci_passed %s attempt=%d", rec.UpdateKey, attempt))
 		return next, nil
 	}
 	next, err := rec.Transition(model.StateCIFailed, "CI failed")
@@ -107,7 +104,6 @@ func (e *engine) ciStep(ctx context.Context, rec model.DependencyUpdate) (model.
 		return rec, err
 	}
 	next.CI = &model.CIResult{Status: "failed", Attempts: attempt, LogSummary: res.LogSummary}
-	e.log.Step(fmt.Sprintf("ci_failed %s attempt=%d", rec.UpdateKey, attempt))
 	return next, nil
 }
 
@@ -132,7 +128,7 @@ func (e *engine) fixStep(ctx context.Context, rec model.DependencyUpdate) (model
 		ci := *rec.CI
 		ci.FailureCategory, ci.Fixable = category, false
 		next.CI = &ci
-		e.log.Warn("repeated CI failures, escalating " + rec.UpdateKey)
+		e.log.Warn(ctx, "repeated CI failures, escalating", "update_key", rec.UpdateKey)
 		return next, nil
 	}
 
@@ -144,7 +140,6 @@ func (e *engine) fixStep(ctx context.Context, rec model.DependencyUpdate) (model
 		ci := *rec.CI
 		ci.FailureCategory, ci.Fixable = category, false
 		next.CI = &ci
-		e.log.Step("awaiting_review " + rec.UpdateKey + " (" + string(category) + ")")
 		return next, nil
 	}
 
@@ -169,6 +164,5 @@ func (e *engine) fixStep(ctx context.Context, rec model.DependencyUpdate) (model
 		return rec, err
 	}
 	next.CI = &model.CIResult{Status: "running", Attempts: attempts + 1, FailureCategory: category, Fixable: true}
-	e.log.Step("fixing " + rec.UpdateKey + " (" + string(category) + ")")
 	return next, nil
 }

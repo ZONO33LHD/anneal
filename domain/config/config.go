@@ -27,6 +27,8 @@ type Config struct {
 	ForceMock bool
 	// Verbose はデバッグログを有効にする。
 	Verbose bool
+	// LogJSON は true で severity 付き JSON ログ（Cloud Run 等）、false で text を出す。
+	LogJSON bool
 }
 
 // Load は環境（および任意の .env ファイル）から設定を読み込む。
@@ -41,6 +43,7 @@ func Load() (*Config, error) {
 		GitHubToken:       os.Getenv("GITHUB_TOKEN"),
 		SlackWebhookURL:   os.Getenv("SLACK_WEBHOOK_URL"),
 		Verbose:           os.Getenv("ANNEAL_DEBUG") == "1",
+		LogJSON:           os.Getenv("ANNEAL_LOG_FORMAT") == "json",
 	}, nil
 }
 

@@ -17,7 +17,7 @@ func (e *engine) analyzeImpact(ctx context.Context, rec model.DependencyUpdate) 
 	usage, err := e.scanner.UsageSites(rec.RepoPath, rec.PackageName)
 	if err != nil {
 		// 走査失敗を「利用箇所なし」と取り違えないよう警告する（部分結果で継続）。
-		e.log.Warn("source scan degraded for " + rec.PackageName + ": " + err.Error())
+		e.log.Warn(ctx, "source scan degraded", "package", rec.PackageName, "err", err)
 	}
 	breaking := rec.UpdateType == model.Major
 	risk := service.DeriveRisk(rec.UpdateType, len(usage), breaking)

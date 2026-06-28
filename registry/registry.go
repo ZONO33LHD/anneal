@@ -7,6 +7,8 @@
 package registry
 
 import (
+	"context"
+
 	"github.com/ZONO33LHD/anneal/domain/config"
 	"github.com/ZONO33LHD/anneal/domain/gateway"
 	"github.com/ZONO33LHD/anneal/domain/repository"
@@ -35,7 +37,7 @@ type Registry struct {
 // New は config からアプリケーションを組み立て、利用可能な secret ごとに実装とモックの
 // provider を選択します（ForceMock が設定されている場合を除く）。
 func New(cfg *config.Config) *Registry {
-	logger := log.NewConsole(cfg.Verbose)
+	logger := log.New(log.Options{Verbose: cfg.Verbose, JSON: cfg.LogJSON})
 
 	db := persistence.NewDB(cfg.StorePath)
 	updates := persistence.NewUpdateRepository(db)
@@ -53,8 +55,8 @@ func New(cfg *config.Config) *Registry {
 	// simulate は git バックエンドがモックのときだけ true（人間承認ゲート/CI を自動進行
 	// させデモを完結させる）。プロバイダ名の文字列ではなく具体型で判定する。
 	_, simulate := gitGW.(*git.Mock)
-	logger.Debug("providers: llm=" + llmGW.ProviderName() + " git=" + gitGW.ProviderName() +
-		" notify=" + notifier.ProviderName() + " metadata=" + meta.ProviderName())
+	logger.Debug(context.Background(), "providers: llm="+llmGW.ProviderName()+" git="+gitGW.ProviderName()+
+		" notify="+notifier.ProviderName()+" metadata="+meta.ProviderName())
 
 	return &Registry{
 		Scan:         usecase.NewScanUsecase(updates, meta, ecosystems, repoCfg, notifier, logger),
