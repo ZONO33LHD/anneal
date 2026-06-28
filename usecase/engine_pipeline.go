@@ -38,6 +38,7 @@ func (e *engine) createPRStep(ctx context.Context, rec model.DependencyUpdate) (
 	}
 	ref, err := e.git.CreateBranchAndPR(ctx, gateway.CreatePROptions{
 		Repository:   rec.Repository,
+		WorkDir:      rec.RepoPath,
 		Base:         base,
 		Branch:       branch,
 		Title:        title,
@@ -74,8 +75,8 @@ func (e *engine) createPRStep(ctx context.Context, rec model.DependencyUpdate) (
 	return next, nil
 }
 
-// ciStep: ci_running -> ci_passed | ci_failed。
-func (e *engine) ciStep(ctx context.Context, rec model.DependencyUpdate) (model.DependencyUpdate, error) {
+// ciStep: ci_running -> ci_passed | ci_failed。CI が未完了なら状態を進めず待つ。
+func (e *engine) ciStep(ctx context.Context, rec model.DependencyUpdate) (model.DependencyUpdate, bool, error) {
 	attempt := 0
 	if rec.CI != nil {
 		attempt = rec.CI.Attempts
@@ -89,22 +90,26 @@ func (e *engine) ciStep(ctx context.Context, rec model.DependencyUpdate) (model.
 		ShouldFailFirst: shouldFailFirst,
 	})
 	if err != nil {
-		return rec, err
+		return rec, false, err
+	}
+	if !res.Complete {
+		e.log.Info(ctx, "CI still pending", "update_key", rec.UpdateKey, "summary", res.LogSummary)
+		return rec, false, nil
 	}
 	if res.Passed {
 		next, err := rec.Transition(model.StateCIPassed, "CI succeeded")
 		if err != nil {
-			return rec, err
+			return rec, false, err
 		}
 		next.CI = &model.CIResult{Status: "passed", Attempts: attempt}
-		return next, nil
+		return next, true, nil
 	}
 	next, err := rec.Transition(model.StateCIFailed, "CI failed")
 	if err != nil {
-		return rec, err
+		return rec, false, err
 	}
 	next.CI = &model.CIResult{Status: "failed", Attempts: attempt, LogSummary: res.LogSummary}
-	return next, nil
+	return next, true, nil
 }
 
 // fixStep: ci_failed -> fixing | awaiting_review。
@@ -145,6 +150,7 @@ func (e *engine) fixStep(ctx context.Context, rec model.DependencyUpdate) (model
 
 	if err := e.git.PushFix(ctx, gateway.PushFixOptions{
 		Repository:   rec.Repository,
+		WorkDir:      rec.RepoPath,
 		Branch:       rec.Branch,
 		PRNumber:     rec.PullRequestNumber,
 		Message:      "fix: address " + string(category) + " after dependency bump",

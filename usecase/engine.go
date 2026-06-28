@@ -216,7 +216,7 @@ func (e *engine) advanceOneStep(ctx context.Context, rec model.DependencyUpdate)
 		return next, err == nil, err
 
 	case model.StateCIRunning:
-		return wrap(e.ciStep(ctx, rec))
+		return e.ciStep(ctx, rec)
 
 	case model.StateCIPassed:
 		return wrap(rec.Transition(model.StateAwaitingReview, "CI passed → review"))
