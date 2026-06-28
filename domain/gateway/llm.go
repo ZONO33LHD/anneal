@@ -13,7 +13,7 @@ type LLMRequest struct {
 // LLM はプロンプトからテキストを生成する。エージェントは文章生成や情報の付加に
 // のみ利用するため、モック実装でもパイプラインは end-to-end で動作する。
 type LLM interface {
-	Name() string
+	ProviderName() string
 	Model() string
 	Generate(ctx context.Context, req LLMRequest) (string, error)
 }
