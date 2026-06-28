@@ -27,24 +27,36 @@ type ScanUsecase interface {
 }
 
 type scanUsecase struct {
-	updates    repository.UpdateRepository
-	metadata   gateway.MetadataSource
-	ecosystems gateway.EcosystemProvider
-	repoConfig gateway.RepoConfigLoader
-	notifier   gateway.Notifier
-	log        gateway.Logger
+	updates      repository.UpdateRepository
+	improvements repository.ImprovementRepository
+	metadata     gateway.MetadataSource
+	ecosystems   gateway.EcosystemProvider
+	repoConfig   gateway.RepoConfigLoader
+	notifier     gateway.Notifier
+	log          gateway.Logger
 }
 
 // NewScanUsecase は scan ユースケースを組み立てる。
 func NewScanUsecase(
 	updates repository.UpdateRepository,
+	improvements repository.ImprovementRepository,
 	metadata gateway.MetadataSource,
 	ecosystems gateway.EcosystemProvider,
 	repoConfig gateway.RepoConfigLoader,
 	notifier gateway.Notifier,
 	log gateway.Logger,
 ) ScanUsecase {
-	return &scanUsecase{updates, metadata, ecosystems, repoConfig, notifier, log}
+	return &scanUsecase{updates, improvements, metadata, ecosystems, repoConfig, notifier, log}
+}
+
+// activeVersion は現在有効なエージェント版を返す。採用済み/試用中の改善があれば
+// その候補版を、無ければ既定版を使う。新規検出レコードに刻印して A/B 比較を可能にする。
+func (s *scanUsecase) activeVersion() string {
+	improvements, err := s.improvements.ListImprovements()
+	if err != nil {
+		return model.CurrentAgentVersion
+	}
+	return model.ActiveAgentVersion(improvements)
 }
 
 // Run はリポジトリをスキャンし、detected レコードを冪等に作成する。重複防止:
@@ -131,7 +143,7 @@ func (s *scanUsecase) consider(
 		Priority:        service.ClassifyPriority(updateType, dep.IsDev, cve),
 		RiskLevel:       model.RiskLow,
 		Status:          model.StateDetected,
-		AgentVersion:    model.CurrentAgentVersion,
+		AgentVersion:    s.activeVersion(),
 		CVE:             cve,
 		History:         []model.TransitionLog{},
 		CreatedAt:       now,

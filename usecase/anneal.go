@@ -114,12 +114,17 @@ func (a *annealUsecase) run(ctx context.Context, average float64) error {
 		Temperature: 0.4,
 	})
 
+	// 候補は「いま有効な版」を基準に作る。採用済み/試用中の改善があればその版から
+	// 派生させ、版番号が連続するようにする。
+	existing, _ := a.improvements.ListImprovements()
+	activeVersion := model.ActiveAgentVersion(existing)
 	imp := model.AgentImprovement{
 		ImprovementID:    model.NewID("imp"),
+		Seq:              model.NextSeq(),
 		Trigger:          fmt.Sprintf("rolling avg %.1f below threshold", average),
 		Target:           "prompt",
-		PreviousVersion:  model.CurrentAgentVersion,
-		CandidateVersion: nextVersion(model.CurrentAgentVersion),
+		PreviousVersion:  activeVersion,
+		CandidateVersion: nextVersion(activeVersion),
 		Hypothesis:       hypothesis,
 		ProposedChange:   proposed,
 		Status:           model.ImprovementCandidate,
