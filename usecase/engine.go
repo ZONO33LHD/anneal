@@ -65,7 +65,7 @@ var scoreStates = map[model.State]bool{
 // Dispatch は単一のレコードを意味のある1ステップだけ進めて永続化し、
 // その評価を再計算する。エラー時はレコードを error 状態へ移す。
 func (e *engine) Dispatch(ctx context.Context, rec model.DependencyUpdate) (bool, model.DependencyUpdate, error) {
-	next, moved, err := e.advance(ctx, rec)
+	next, moved, err := e.advanceOneStep(ctx, rec)
 	if err != nil {
 		errored := rec.ToError(err.Error())
 		e.log.Warn("dispatch failed; moving to error: " + err.Error())
@@ -127,7 +127,7 @@ func (e *engine) Reconcile(ctx context.Context) (int, error) {
 	return changed, nil
 }
 
-func (e *engine) advance(ctx context.Context, rec model.DependencyUpdate) (model.DependencyUpdate, bool, error) {
+func (e *engine) advanceOneStep(ctx context.Context, rec model.DependencyUpdate) (model.DependencyUpdate, bool, error) {
 	switch rec.Status {
 	case model.StateDetected:
 		return wrap(e.analyzeStep(ctx, rec))
@@ -215,7 +215,7 @@ func (e *engine) advance(ctx context.Context, rec model.DependencyUpdate) (model
 	}
 }
 
-// wrap は (record, error) のステップを advance のシグネチャに適合させる。
+// wrap は (record, error) のステップを advanceOneStep のシグネチャに適合させる。
 func wrap(next model.DependencyUpdate, err error) (model.DependencyUpdate, bool, error) {
 	if err != nil {
 		return next, false, err
