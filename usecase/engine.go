@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -62,6 +63,14 @@ var scoreStates = map[model.State]bool{
 	model.StateRegressed: true, model.StateClosed: true,
 }
 
+// notifyOrLog は通知を送り、失敗してもパイプラインは止めず警告ログに残す。
+// 通知はベストエフォートだが、握りつぶさず可視化する。
+func notifyOrLog(ctx context.Context, n gateway.Notifier, log gateway.Logger, msg gateway.NotifyMessage) {
+	if err := n.Notify(ctx, msg); err != nil {
+		log.Warn("notify failed: " + err.Error())
+	}
+}
+
 // Dispatch は単一のレコードを意味のある1ステップだけ進めて永続化し、
 // その評価を再計算する。エラー時はレコードを error 状態へ移す。
 func (e *engine) Dispatch(ctx context.Context, rec model.DependencyUpdate) (bool, model.DependencyUpdate, error) {
@@ -69,7 +78,11 @@ func (e *engine) Dispatch(ctx context.Context, rec model.DependencyUpdate) (bool
 	if err != nil {
 		errored := rec.ToError(err.Error())
 		e.log.Warn("dispatch failed; moving to error: " + err.Error())
-		_ = e.updates.Put(errored)
+		if putErr := e.updates.Put(errored); putErr != nil {
+			// error 状態の保存にも失敗した場合は、両方の原因を呼び出し側へ返す
+			// （状態が古いまま成功扱いされるのを防ぐ）。
+			return false, rec, errors.Join(err, putErr)
+		}
 		return true, errored, nil
 	}
 	if !moved {
@@ -135,7 +148,7 @@ func (e *engine) advanceOneStep(ctx context.Context, rec model.DependencyUpdate)
 	case model.StateAnalyzing:
 		d := service.Decide(rec)
 		if d.Decision == "human" {
-			_ = e.notifier.Notify(ctx, gateway.NotifyMessage{
+			notifyOrLog(ctx, e.notifier, e.log, gateway.NotifyMessage{
 				Level: gateway.NotifyApproval,
 				Title: "Human approval required: " + rec.PackageName,
 				Body:  strings.Join(d.Reasons, "; "),
@@ -196,7 +209,7 @@ func (e *engine) advanceOneStep(ctx context.Context, rec model.DependencyUpdate)
 		return next, err == nil, err
 
 	case model.StateMerged:
-		_ = e.notifier.Notify(ctx, gateway.NotifyMessage{
+		notifyOrLog(ctx, e.notifier, e.log, gateway.NotifyMessage{
 			Level: gateway.NotifySuccess,
 			Title: "Merged: " + rec.PackageName + " → " + rec.TargetVersion,
 			Body:  "Entering regression monitoring window.",

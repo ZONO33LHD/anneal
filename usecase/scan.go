@@ -93,10 +93,19 @@ func (s *scanUsecase) consider(
 		return nil, nil
 	}
 	latest, err := s.metadata.LatestVersion(ctx, eco, dep.Name, dep.CurrentVersion)
-	if err != nil || latest == "" || !model.IsUpgrade(dep.CurrentVersion, latest) {
+	if err != nil {
+		// メタデータ取得失敗を「更新なし」と取り違えないよう、明示的に縮退として記録する。
+		s.log.Warn("metadata degraded: latest version lookup failed for " + dep.Name + ": " + err.Error())
 		return nil, nil
 	}
-	advisories, _ := s.metadata.Advisories(ctx, eco, dep.Name, dep.CurrentVersion)
+	if latest == "" || !model.IsUpgrade(dep.CurrentVersion, latest) {
+		return nil, nil
+	}
+	advisories, err := s.metadata.Advisories(ctx, eco, dep.Name, dep.CurrentVersion)
+	if err != nil {
+		// アドバイザリ取得失敗を「CVEなし」と取り違えないよう警告する（更新自体は継続）。
+		s.log.Warn("metadata degraded: advisory lookup failed for " + dep.Name + ": " + err.Error())
+	}
 	var cve *model.CVEInfo
 	if len(advisories) > 0 {
 		cve = &advisories[0]
@@ -112,6 +121,7 @@ func (s *scanUsecase) consider(
 		UpdateKey:       key,
 		Repository:      repoName,
 		RepoPath:        repoPath,
+		BaseBranch:      cfg.BaseBranch,
 		Ecosystem:       eco,
 		PackageName:     dep.Name,
 		CurrentVersion:  dep.CurrentVersion,
@@ -137,7 +147,7 @@ func (s *scanUsecase) consider(
 		level = gateway.NotifyPriority
 		title = fmt.Sprintf("Security update available: %s (%s)", dep.Name, cve.ID)
 	}
-	_ = s.notifier.Notify(ctx, gateway.NotifyMessage{
+	notifyOrLog(ctx, s.notifier, s.log, gateway.NotifyMessage{
 		Level: level,
 		Title: title,
 		Body:  fmt.Sprintf("%s → %s (%s, priority=%s)", dep.CurrentVersion, latest, updateType, rec.Priority),

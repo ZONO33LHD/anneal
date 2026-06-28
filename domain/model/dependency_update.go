@@ -83,6 +83,7 @@ type DependencyUpdate struct {
 	UpdateKey          string          `json:"update_key"`
 	Repository         string          `json:"repository"`
 	RepoPath           string          `json:"repo_path,omitempty"`
+	BaseBranch         string          `json:"base_branch,omitempty"`
 	Ecosystem          Ecosystem       `json:"ecosystem"`
 	PackageName        string          `json:"package_name"`
 	CurrentVersion     string          `json:"current_version"`

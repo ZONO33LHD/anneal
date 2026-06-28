@@ -22,10 +22,15 @@ func DefaultRepoConfig() RepoConfig {
 }
 
 // IsIgnored はリポジトリ設定に従ってそのパッケージをスキップすべきかどうかを返す。
+// 末尾に "*" が付くパターンのみ前方一致、それ以外は完全一致で判定する
+// （"react" が "reactive-lib" まで誤って無視するのを防ぐ）。
 func (c RepoConfig) IsIgnored(packageName string) bool {
 	for _, p := range c.Ignore {
-		prefix := strings.TrimSuffix(p, "*")
-		if packageName == p || strings.HasPrefix(packageName, prefix) {
+		if prefix, ok := strings.CutSuffix(p, "*"); ok {
+			if strings.HasPrefix(packageName, prefix) {
+				return true
+			}
+		} else if packageName == p {
 			return true
 		}
 	}

@@ -25,6 +25,8 @@ type EcosystemProvider interface {
 }
 
 // SourceScanner はリポジトリのソース内でパッケージが使われている箇所を見つける。
+// 走査に失敗した場合は error を返す（読み取り失敗を「利用箇所なし」と取り違えて
+// リスクを過小評価しないため）。
 type SourceScanner interface {
-	UsageSites(repoPath, packageName string) []string
+	UsageSites(repoPath, packageName string) ([]string, error)
 }

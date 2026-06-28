@@ -86,7 +86,10 @@ func TestProviderDetect(t *testing.T) {
 
 func TestScannerUsageSites(t *testing.T) {
 	work := testutil.CopyFixture(t, filepath.Join("..", ".."))
-	sites := ecosystem.NewScanner().UsageSites(work, "axios")
+	sites, err := ecosystem.NewScanner().UsageSites(work, "axios")
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(sites) == 0 {
 		t.Error("expected axios usage sites")
 	}

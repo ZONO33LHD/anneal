@@ -50,12 +50,15 @@ func (g *Gemini) Generate(ctx context.Context, req gateway.LLMRequest) (string, 
 			"maxOutputTokens": maxTokens,
 		},
 	})
-	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s", g.model, g.apiKey)
+	// API キーは URL クエリではなくヘッダで渡す（proxy / アクセスログに secret が
+	// 残らないようにするため）。
+	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent", g.model)
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
 		return "", err
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("x-goog-api-key", g.apiKey)
 	resp, err := g.http.Do(httpReq)
 	if err != nil {
 		return "", err
