@@ -43,9 +43,10 @@ func (*Mock) CheckCI(_ context.Context, opts gateway.CICheckOptions) (gateway.CI
 	if opts.ShouldFailFirst && opts.Attempt == 0 {
 		branch := strings.ReplaceAll(opts.Branch, "/", "-")
 		return gateway.CICheck{
+			Complete:   true,
 			Passed:     false,
 			LogSummary: fmt.Sprintf("npm test failed: 2 tests broke after the bump (%s).", branch),
 		}, nil
 	}
-	return gateway.CICheck{Passed: true}, nil
+	return gateway.CICheck{Complete: true, Passed: true}, nil
 }

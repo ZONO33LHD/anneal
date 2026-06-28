@@ -45,7 +45,7 @@ func New(cfg *config.Config) *Registry {
 	improvements := persistence.NewImprovementRepository(db)
 
 	llmGW := pickLLM(cfg)
-	gitGW := pickGit(cfg)
+	gitGW := pickGit(cfg, logger)
 	notifier := pickNotifier(cfg)
 	meta := pickMetadata(cfg)
 	ecosystems := ecosystem.NewProvider()
@@ -75,9 +75,9 @@ func pickLLM(cfg *config.Config) gateway.LLM {
 	return llm.NewMock()
 }
 
-func pickGit(cfg *config.Config) gateway.Git {
+func pickGit(cfg *config.Config, logger gateway.Logger) gateway.Git {
 	if !cfg.ForceMock && cfg.GitHubToken != "" {
-		return git.NewGitHub(cfg.GitHubToken)
+		return git.NewGitHub(cfg.GitHubToken, logger)
 	}
 	return git.NewMock()
 }
