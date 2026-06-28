@@ -106,8 +106,35 @@ func (e *engine) Dispatch(ctx context.Context, rec model.DependencyUpdate) (move
 	if putErr := e.updates.Put(next); putErr != nil {
 		return false, rec, putErr
 	}
+	e.logTransition(rec.Status, next)
 	e.maybeScore(next)
 	return true, next, nil
+}
+
+// logTransition はライフサイクルの遷移を 1 行で監査記録する。
+// 誰が(agent_version) / 何を(update_key, package) / どうした(from→to) /
+// なぜ(reason) / 結果(risk, ci, pr) を構造化フィールドで残す。
+func (e *engine) logTransition(from model.State, rec model.DependencyUpdate) {
+	args := []any{
+		"update_key", rec.UpdateKey,
+		"package", rec.PackageName,
+		"from", string(from),
+		"to", string(rec.Status),
+		"agent_version", rec.AgentVersion,
+	}
+	if n := len(rec.History); n > 0 {
+		args = append(args, "reason", rec.History[n-1].Reason)
+	}
+	if rec.Impact != nil {
+		args = append(args, "risk", string(rec.Impact.RiskLevel))
+	}
+	if rec.CI != nil {
+		args = append(args, "ci_status", rec.CI.Status, "ci_attempt", rec.CI.Attempts)
+	}
+	if rec.PullRequestURL != "" {
+		args = append(args, "pr", rec.PullRequestURL)
+	}
+	e.log.Step("lifecycle transition", args...)
 }
 
 // Tick はすべてのアクティブなレコードを1ステップ進める。

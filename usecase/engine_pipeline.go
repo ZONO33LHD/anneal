@@ -18,7 +18,6 @@ func (e *engine) analyzeStep(ctx context.Context, rec model.DependencyUpdate) (m
 	}
 	next.Impact = &impact
 	next.RiskLevel = impact.RiskLevel
-	e.log.Step("analyzing", "update_key", rec.UpdateKey, "risk", impact.RiskLevel)
 	return next, nil
 }
 
@@ -72,7 +71,6 @@ func (e *engine) createPRStep(ctx context.Context, rec model.DependencyUpdate) (
 	next.Branch = branch
 	next.PullRequestURL = ref.URL
 	next.PullRequestNumber = ref.Number
-	e.log.Step("pr_created", "update_key", rec.UpdateKey, "url", ref.URL)
 	return next, nil
 }
 
@@ -99,7 +97,6 @@ func (e *engine) ciStep(ctx context.Context, rec model.DependencyUpdate) (model.
 			return rec, err
 		}
 		next.CI = &model.CIResult{Status: "passed", Attempts: attempt}
-		e.log.Step("ci_passed", "update_key", rec.UpdateKey, "attempt", attempt)
 		return next, nil
 	}
 	next, err := rec.Transition(model.StateCIFailed, "CI failed")
@@ -107,7 +104,6 @@ func (e *engine) ciStep(ctx context.Context, rec model.DependencyUpdate) (model.
 		return rec, err
 	}
 	next.CI = &model.CIResult{Status: "failed", Attempts: attempt, LogSummary: res.LogSummary}
-	e.log.Step("ci_failed", "update_key", rec.UpdateKey, "attempt", attempt)
 	return next, nil
 }
 
@@ -144,7 +140,6 @@ func (e *engine) fixStep(ctx context.Context, rec model.DependencyUpdate) (model
 		ci := *rec.CI
 		ci.FailureCategory, ci.Fixable = category, false
 		next.CI = &ci
-		e.log.Step("awaiting_review", "update_key", rec.UpdateKey, "category", string(category))
 		return next, nil
 	}
 
@@ -169,6 +164,5 @@ func (e *engine) fixStep(ctx context.Context, rec model.DependencyUpdate) (model
 		return rec, err
 	}
 	next.CI = &model.CIResult{Status: "running", Attempts: attempts + 1, FailureCategory: category, Fixable: true}
-	e.log.Step("fixing", "update_key", rec.UpdateKey, "category", string(category))
 	return next, nil
 }

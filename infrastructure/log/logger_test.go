@@ -22,6 +22,10 @@ func TestErrorIncludesStackTrace(t *testing.T) {
 	if !strings.Contains(out, "TestErrorIncludesStackTrace") {
 		t.Errorf("stack trace should reference the caller frame:\n%s", out)
 	}
+	// source は logger.go ではなく呼び出し元（このテストファイル）を指すはず。
+	if !strings.Contains(out, "logger_test.go") {
+		t.Errorf("source should reference the caller file, not the wrapper:\n%s", out)
+	}
 }
 
 func TestSeverityMapping(t *testing.T) {

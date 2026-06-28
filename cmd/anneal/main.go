@@ -11,14 +11,24 @@ import (
 
 	"github.com/ZONO33LHD/anneal/domain/config"
 	"github.com/ZONO33LHD/anneal/domain/policy"
+	applog "github.com/ZONO33LHD/anneal/infrastructure/log"
 	"github.com/ZONO33LHD/anneal/registry"
 )
 
 func main() {
 	if err := run(os.Args[1:]); err != nil {
-		fmt.Fprintln(os.Stderr, "✖ "+err.Error())
+		// 最終的な失敗を severity=ERROR ＋スタックトレース付きで構造化記録する。
+		logFatal(err)
 		os.Exit(1)
 	}
+}
+
+func logFatal(err error) {
+	opts := applog.Options{}
+	if cfg, cerr := config.Load(); cerr == nil {
+		opts.JSON, opts.Verbose = cfg.LogJSON, cfg.Verbose
+	}
+	applog.New(opts).Error("command failed", err)
 }
 
 func run(args []string) error {
@@ -172,6 +182,7 @@ func runDemo() error {
 		GeminiModel:       "gemini-2.5-flash-lite",
 		ForceMock:         true,
 		Verbose:           true,
+		LogJSON:           os.Getenv("ANNEAL_LOG_FORMAT") == "json",
 	}
 	reg := registry.New(cfg)
 	ctx := context.Background()
