@@ -13,10 +13,13 @@ import (
 
 // Config はすべての実行時設定を保持する。
 type Config struct {
-	StorePath         string
-	ImproveWindow     int
-	LowScoreThreshold float64
-	HTTPAddr          string
+	StorePath                 string
+	StoreBackend              string
+	FirestoreProjectID        string
+	FirestoreCollectionPrefix string
+	ImproveWindow             int
+	LowScoreThreshold         float64
+	HTTPAddr                  string
 
 	// シークレット。空値はその機能について「モックを使う」ことを意味する。
 	GeminiAPIKey        string
@@ -37,19 +40,29 @@ type Config struct {
 func Load() (*Config, error) {
 	loadDotEnv(".env")
 	return &Config{
-		StorePath:           envOr("ANNEAL_STORE_PATH", ".anneal/store.json"),
-		ImproveWindow:       envInt("ANNEAL_IMPROVE_WINDOW", policy.DefaultImproveWindow),
-		LowScoreThreshold:   envFloat("ANNEAL_LOW_SCORE_THRESHOLD", policy.DefaultLowScoreThreshold),
-		HTTPAddr:            envOr("ANNEAL_HTTP_ADDR", ":8080"),
-		GeminiAPIKey:        os.Getenv("GEMINI_API_KEY"),
-		GeminiModel:         envOr("ANNEAL_LLM_MODEL", "gemini-2.5-flash-lite"),
-		GitHubToken:         os.Getenv("GITHUB_TOKEN"),
-		GitHubWebhookSecret: os.Getenv("GITHUB_WEBHOOK_SECRET"),
-		SlackWebhookURL:     os.Getenv("SLACK_WEBHOOK_URL"),
-		Verbose:             os.Getenv("ANNEAL_DEBUG") == "1",
-		LogJSON:             os.Getenv("ANNEAL_LOG_FORMAT") == "json",
+		StorePath:                 envOr("ANNEAL_STORE_PATH", ".anneal/store.json"),
+		StoreBackend:              envOr("ANNEAL_STORE_BACKEND", StoreBackendJSON),
+		FirestoreProjectID:        firestoreProjectID(),
+		FirestoreCollectionPrefix: os.Getenv("ANNEAL_FIRESTORE_PREFIX"),
+		ImproveWindow:             envInt("ANNEAL_IMPROVE_WINDOW", policy.DefaultImproveWindow),
+		LowScoreThreshold:         envFloat("ANNEAL_LOW_SCORE_THRESHOLD", policy.DefaultLowScoreThreshold),
+		HTTPAddr:                  envOr("ANNEAL_HTTP_ADDR", ":8080"),
+		GeminiAPIKey:              os.Getenv("GEMINI_API_KEY"),
+		GeminiModel:               envOr("ANNEAL_LLM_MODEL", "gemini-2.5-flash-lite"),
+		GitHubToken:               os.Getenv("GITHUB_TOKEN"),
+		GitHubWebhookSecret:       os.Getenv("GITHUB_WEBHOOK_SECRET"),
+		SlackWebhookURL:           os.Getenv("SLACK_WEBHOOK_URL"),
+		Verbose:                   os.Getenv("ANNEAL_DEBUG") == "1",
+		LogJSON:                   os.Getenv("ANNEAL_LOG_FORMAT") == "json",
 	}, nil
 }
+
+const (
+	// StoreBackendJSON はローカル JSON ファイルを使う既定の永続化 backend である。
+	StoreBackendJSON = "json"
+	// StoreBackendFirestore は Firestore を使う永続化 backend である。
+	StoreBackendFirestore = "firestore"
+)
 
 func envOr(key, def string) string {
 	if v := os.Getenv(key); v != "" {
@@ -70,6 +83,13 @@ func envFloat(key string, def float64) float64 {
 		return v
 	}
 	return def
+}
+
+func firestoreProjectID() string {
+	if v := os.Getenv("ANNEAL_FIRESTORE_PROJECT"); v != "" {
+		return v
+	}
+	return os.Getenv("GOOGLE_CLOUD_PROJECT")
 }
 
 // loadDotEnv は .env ファイルから KEY=VALUE 行を読み込む。既存の環境変数は
