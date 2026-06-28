@@ -171,6 +171,10 @@ func cmdServe() error {
 		Webhook: reg.Webhook,
 		Logger:  reg.Logger,
 	}))
+	mux.Handle("/", webhookhttp.NewDashboardHandler(webhookhttp.DashboardOptions{
+		Dashboard: reg.Dashboard,
+		Logger:    reg.Logger,
+	}))
 
 	server := &http.Server{
 		Addr:              cfg.HTTPAddr,
