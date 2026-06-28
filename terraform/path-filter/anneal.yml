@@ -1,0 +1,4 @@
+# 記述順 = apply 順。後続は前段のリソースに依存する前提で並べる。
+# api を最初にすることで、後続が依存する Google Cloud APIs の有効化を保証する。
+terraform/resources/anneal-prd/api:
+  - 'terraform/resources/anneal-prd/api/**'
