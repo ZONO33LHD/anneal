@@ -214,6 +214,14 @@ func (d *DB) putImprovement(i model.AgentImprovement) error {
 	if err := d.ensureLoaded(); err != nil {
 		return err
 	}
+	// ImprovementID で upsert する。採用ライフサイクル（candidate → canary →
+	// adopted/rolled_back）で同じ改善のステータスを更新するため、重複追加しない。
+	for idx, existing := range d.snap.Improvements {
+		if existing.ImprovementID == i.ImprovementID {
+			d.snap.Improvements[idx] = i
+			return d.flush()
+		}
+	}
 	d.snap.Improvements = append(d.snap.Improvements, i)
 	return d.flush()
 }

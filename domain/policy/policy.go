@@ -38,6 +38,14 @@ const (
 
 	// DefaultRegressionWindowDays: マージされた更新を監視する期間。
 	DefaultRegressionWindowDays = 7
+
+	// MinCanarySample: カナリア版（候補版）の採用/ロールバックを判断する前に必要な
+	// 確定スコアの最小件数。少なすぎる標本での誤った採用/巻き戻しを防ぐ。
+	MinCanarySample = 3
+
+	// CanaryRegressionMargin: カナリア版の平均がベースライン版をこの点数だけ下回ったら
+	// 劣化とみなしてロールバックする。小さな揺らぎでの巻き戻しを防ぐための余裕。
+	CanaryRegressionMargin = 3.0
 )
 
 // AutoPRDefaultTypes は自動 PR 作成の対象となる更新種別である。

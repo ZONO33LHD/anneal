@@ -54,6 +54,8 @@ func run(args []string) error {
 		return cmdServe()
 	case "improve":
 		return cmdImprove()
+	case "adopt":
+		return cmdAdopt()
 	case "status":
 		return cmdStatus()
 	case "demo":
@@ -76,6 +78,7 @@ Usage:
   anneal reconcile                         Catch up records left behind by missed events
   anneal serve                             Listen for GitHub webhooks over HTTP
   anneal improve                           Run the Annealing Loop score check
+  anneal adopt                             Advance A/B adoption (canary → adopt/rollback)
   anneal status                            Print a summary of records and scores
   anneal demo                              Run the full lifecycle on the bundled fixture (all-mock)
 `)
@@ -129,6 +132,10 @@ func cmdTick() error {
 		return err
 	}
 	if err := reg.Anneal.MaybeAnneal(ctx); err != nil {
+		return err
+	}
+	// 改善候補があれば A/B 採用ループも 1 ステップ進める。
+	if err := reg.Adoption.Evaluate(ctx); err != nil {
 		return err
 	}
 	fmt.Printf("ℹ tick complete advanced=%d\n", changed)
@@ -219,6 +226,16 @@ func cmdImprove() error {
 	return reg.Anneal.MaybeAnneal(runContext())
 }
 
+// cmdAdopt は A/B 採用ループを 1 ステップ進める（候補の canary 昇格、または canary の
+// 採用/巻き戻し）。
+func cmdAdopt() error {
+	reg, err := newRegistry()
+	if err != nil {
+		return err
+	}
+	return reg.Adoption.Evaluate(runContext())
+}
+
 func cmdStatus() error {
 	reg, err := newRegistry()
 	if err != nil {
@@ -295,6 +312,11 @@ func runDemo() error {
 
 	fmt.Println("\n=== 4) 🔥 Annealing Loop ===")
 	if err := reg.Anneal.MaybeAnneal(ctx); err != nil {
+		return err
+	}
+
+	fmt.Println("\n=== 5) A/B adoption (candidate → canary) ===")
+	if err := reg.Adoption.Evaluate(ctx); err != nil {
 		return err
 	}
 

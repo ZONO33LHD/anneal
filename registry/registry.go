@@ -13,6 +13,7 @@ import (
 
 	"github.com/ZONO33LHD/anneal/domain/config"
 	"github.com/ZONO33LHD/anneal/domain/gateway"
+	"github.com/ZONO33LHD/anneal/domain/policy"
 	"github.com/ZONO33LHD/anneal/domain/repository"
 	"github.com/ZONO33LHD/anneal/infrastructure/ecosystem"
 	"github.com/ZONO33LHD/anneal/infrastructure/git"
@@ -28,11 +29,12 @@ import (
 
 // Registry は CLI が必要とする、配線済みの usecase と repository を保持します。
 type Registry struct {
-	Scan    usecase.ScanUsecase
-	Engine  usecase.EngineUsecase
-	Anneal  usecase.AnnealUsecase
-	Webhook usecase.WebhookUsecase
-	Logger  gateway.Logger
+	Scan     usecase.ScanUsecase
+	Engine   usecase.EngineUsecase
+	Anneal   usecase.AnnealUsecase
+	Adoption usecase.AdoptionUsecase
+	Webhook  usecase.WebhookUsecase
+	Logger   gateway.Logger
 
 	Updates      repository.UpdateRepository
 	Evaluations  repository.EvaluationRepository
@@ -87,9 +89,10 @@ func New(cfg *config.Config) (*Registry, error) {
 	engine := usecase.NewEngineUsecase(updates, evals, improvements, llmGW, gitGW, notifier, ecosystems, scanner, logger, cfg.LowScoreThreshold, simulate)
 
 	return &Registry{
-		Scan:         usecase.NewScanUsecase(updates, meta, ecosystems, repoCfg, notifier, logger),
+		Scan:         usecase.NewScanUsecase(updates, improvements, meta, ecosystems, repoCfg, notifier, logger),
 		Engine:       engine,
 		Anneal:       usecase.NewAnnealUsecase(evals, improvements, llmGW, notifier, logger, cfg.ImproveWindow, cfg.LowScoreThreshold),
+		Adoption:     usecase.NewAdoptionUsecase(evals, improvements, notifier, logger, policy.MinCanarySample, policy.CanaryRegressionMargin),
 		Webhook:      usecase.NewWebhookUsecase(updates, engine, logger),
 		Logger:       logger,
 		Updates:      updates,
