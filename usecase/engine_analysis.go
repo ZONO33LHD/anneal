@@ -23,8 +23,10 @@ func (e *engine) analyzeImpact(ctx context.Context, rec model.DependencyUpdate) 
 	risk := service.DeriveRisk(rec.UpdateType, len(usage), breaking)
 	confidence := service.DeriveConfidence(rec.UpdateType, len(usage))
 
+	// 判断プロンプトは版で引く（T10）。採用/canary 版があればその版のテンプレートが、
+	// 無ければ既定版 prompt_v1 が返る（PromptProvider が A1 フォールバックを担う）。
 	prompt := fmt.Sprintf(
-		"[impact] Summarize the impact of bumping %s from %s to %s (%s, %d usage sites, risk=%s).",
+		e.prompts.For(rec.AgentVersion, gateway.PromptKeyImpact),
 		rec.PackageName, rec.CurrentVersion, rec.TargetVersion, rec.UpdateType, len(usage), risk,
 	)
 	enriched, _ := e.llm.Generate(ctx, gateway.LLMRequest{Prompt: prompt, Temperature: 0.2})

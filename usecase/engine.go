@@ -30,6 +30,7 @@ type engine struct {
 	notifier     gateway.Notifier
 	ecosystems   gateway.EcosystemProvider
 	scanner      gateway.SourceScanner
+	prompts      gateway.PromptProvider
 	log          gateway.Logger
 
 	lowScoreThreshold float64
@@ -49,11 +50,12 @@ func NewEngineUsecase(
 	notifier gateway.Notifier,
 	ecosystems gateway.EcosystemProvider,
 	scanner gateway.SourceScanner,
+	prompts gateway.PromptProvider,
 	log gateway.Logger,
 	lowScoreThreshold float64,
 	simulate bool,
 ) EngineUsecase {
-	return &engine{updates, evals, improvements, llm, git, notifier, ecosystems, scanner, log, lowScoreThreshold, simulate}
+	return &engine{updates, evals, improvements, llm, git, notifier, ecosystems, scanner, prompts, log, lowScoreThreshold, simulate}
 }
 
 var scoreStates = map[model.State]bool{

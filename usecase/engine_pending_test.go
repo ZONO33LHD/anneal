@@ -65,6 +65,7 @@ func TestEngineWaitsWhenCIPending(t *testing.T) {
 		nil,
 		nil,
 		nil,
+		nil,
 		noopLogger{},
 		90,
 		false,

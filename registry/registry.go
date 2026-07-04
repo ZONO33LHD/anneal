@@ -38,10 +38,6 @@ type Registry struct {
 	Dashboard usecase.DashboardUsecase
 	Logger    gateway.Logger
 
-	// Prompts は版で引けるプロンプトカタログ。4a で配線のみ行い、判断プロンプトの
-	// 呼び出し側への結線は 4b で行う（現段階では未消費）。
-	Prompts gateway.PromptProvider
-
 	Updates      repository.UpdateRepository
 	Evaluations  repository.EvaluationRepository
 	Improvements repository.ImprovementRepository
@@ -86,13 +82,14 @@ func New(cfg *config.Config) (*Registry, error) {
 	ecosystems := ecosystem.NewProvider()
 	scanner := ecosystem.NewScanner()
 	repoCfg := repoconfig.NewLoader()
+	prompts := prompt.NewCatalog()
 
 	// simulate は git バックエンドがモックのときだけ true（人間承認ゲート/CI を自動進行
 	// させデモを完結させる）。プロバイダ名の文字列ではなく具体型で判定する。
 	_, simulate := gitGW.(*git.Mock)
 	logger.Debug(context.Background(), "providers: llm="+llmGW.ProviderName()+" git="+gitGW.ProviderName()+
 		" notify="+notifier.ProviderName()+" metadata="+meta.ProviderName())
-	engine := usecase.NewEngineUsecase(updates, evals, improvements, llmGW, gitGW, notifier, ecosystems, scanner, logger, cfg.LowScoreThreshold, simulate)
+	engine := usecase.NewEngineUsecase(updates, evals, improvements, llmGW, gitGW, notifier, ecosystems, scanner, prompts, logger, cfg.LowScoreThreshold, simulate)
 
 	return &Registry{
 		Scan:         usecase.NewScanUsecase(updates, improvements, meta, ecosystems, repoCfg, notifier, logger),
@@ -102,7 +99,6 @@ func New(cfg *config.Config) (*Registry, error) {
 		Webhook:      usecase.NewWebhookUsecase(updates, engine, logger),
 		Dashboard:    usecase.NewDashboardUsecase(updates, evals, improvements),
 		Logger:       logger,
-		Prompts:      prompt.NewCatalog(),
 		Updates:      updates,
 		Evaluations:  evals,
 		Improvements: improvements,
