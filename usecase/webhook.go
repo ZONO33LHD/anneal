@@ -100,6 +100,9 @@ func NewWebhookUsecase(
 
 // Handle は active record のうち webhook と対応する 1 件だけを Dispatch する。
 func (u *webhookUsecase) Handle(ctx context.Context, event WebhookEvent) (bool, error) {
+	if event.Signal == WebhookSignalAlertDetected {
+		return u.handleAlertDetected(ctx, event)
+	}
 	active, err := u.updates.ListActive()
 	if err != nil {
 		return false, err
@@ -132,6 +135,85 @@ func (u *webhookUsecase) Handle(ctx context.Context, event WebhookEvent) (bool, 
 		"moved", moved,
 	)
 	return moved, nil
+}
+
+func (u *webhookUsecase) handleAlertDetected(ctx context.Context, event WebhookEvent) (bool, error) {
+	key, ok := AlertUpdateKey(event)
+	if !ok {
+		u.log.Info(ctx, "alert webhook ignored",
+			"repository", event.Repository,
+			"signal", string(event.Signal),
+		)
+		return false, nil
+	}
+	active, err := u.updates.GetActive(key)
+	if err != nil {
+		return false, err
+	}
+	if active != nil {
+		return false, nil
+	}
+
+	alert := *event.Alert
+	current := alert.CurrentVersion
+	if current == "" {
+		current = alert.VulnerableRange
+	}
+	ecosystem := alert.Ecosystem
+	if ecosystem == "" {
+		ecosystem = model.EcosystemNPM
+	}
+
+	now := model.NowString()
+	rec := model.DependencyUpdate{
+		UpdateKey:      key,
+		Repository:     event.Repository,
+		Ecosystem:      ecosystem,
+		PackageName:    alert.PackageName,
+		CurrentVersion: current,
+		TargetVersion:  alert.TargetVersion,
+		UpdateType:     model.ClassifyUpdate(current, alert.TargetVersion),
+		Priority:       priorityFromAlertSeverity(alert.AdvisorySeverity),
+		RiskLevel:      riskFromAlertSeverity(alert.AdvisorySeverity),
+		Status:         model.StateDetected,
+		AgentVersion:   model.CurrentAgentVersion,
+		CVE:            AlertCVEInfo(alert),
+		History:        []model.TransitionLog{},
+		CreatedAt:      now,
+		UpdatedAt:      now,
+	}
+	if err := u.updates.Put(rec); err != nil {
+		return false, err
+	}
+	u.log.Step(ctx, "alert webhook detected update",
+		"update_key", key,
+		"severity", alert.AdvisorySeverity,
+	)
+	return true, nil
+}
+
+func priorityFromAlertSeverity(severity string) model.Priority {
+	switch strings.ToLower(severity) {
+	case "critical":
+		return model.PriorityCritical
+	case "high":
+		return model.PriorityHigh
+	case "low":
+		return model.PriorityLow
+	default:
+		return model.PriorityMedium
+	}
+}
+
+func riskFromAlertSeverity(severity string) model.RiskLevel {
+	switch strings.ToLower(severity) {
+	case "critical", "high":
+		return model.RiskHigh
+	case "low":
+		return model.RiskLow
+	default:
+		return model.RiskMedium
+	}
 }
 
 func matchWebhookRecord(records []model.DependencyUpdate, event WebhookEvent) (model.DependencyUpdate, bool) {
