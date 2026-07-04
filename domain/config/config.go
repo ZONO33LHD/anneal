@@ -20,6 +20,10 @@ type Config struct {
 	ImproveWindow             int
 	LowScoreThreshold         float64
 	HTTPAddr                  string
+	InternalToken             string
+	InternalOIDCAudience      string
+	InternalOIDCEmail         string
+	ScanTargets               []ScanTarget
 
 	// シークレット。空値はその機能について「モックを使う」ことを意味する。
 	GeminiAPIKey        string
@@ -36,6 +40,12 @@ type Config struct {
 	LogJSON bool
 }
 
+// ScanTarget は定期 scan endpoint が実行する対象 repository を表す。
+type ScanTarget struct {
+	Path       string
+	Repository string
+}
+
 // Load は環境（および任意の .env ファイル）から設定を読み込む。
 func Load() (*Config, error) {
 	loadDotEnv(".env")
@@ -47,6 +57,10 @@ func Load() (*Config, error) {
 		ImproveWindow:             envInt("ANNEAL_IMPROVE_WINDOW", policy.DefaultImproveWindow),
 		LowScoreThreshold:         envFloat("ANNEAL_LOW_SCORE_THRESHOLD", policy.DefaultLowScoreThreshold),
 		HTTPAddr:                  envOr("ANNEAL_HTTP_ADDR", defaultHTTPAddr()),
+		InternalToken:             os.Getenv("ANNEAL_INTERNAL_TOKEN"),
+		InternalOIDCAudience:      os.Getenv("ANNEAL_INTERNAL_OIDC_AUDIENCE"),
+		InternalOIDCEmail:         os.Getenv("ANNEAL_INTERNAL_OIDC_EMAIL"),
+		ScanTargets:               parseScanTargets(os.Getenv("ANNEAL_SCAN_TARGETS")),
 		GeminiAPIKey:              os.Getenv("GEMINI_API_KEY"),
 		GeminiModel:               envOr("ANNEAL_LLM_MODEL", "gemini-2.5-flash-lite"),
 		GitHubToken:               os.Getenv("GITHUB_TOKEN"),
@@ -100,6 +114,31 @@ func firestoreProjectID() string {
 		return v
 	}
 	return os.Getenv("GOOGLE_CLOUD_PROJECT")
+}
+
+func parseScanTargets(raw string) []ScanTarget {
+	if strings.TrimSpace(raw) == "" {
+		return nil
+	}
+	targets := make([]ScanTarget, 0)
+	for _, item := range strings.Split(raw, ",") {
+		item = strings.TrimSpace(item)
+		if item == "" {
+			continue
+		}
+		path, repo, hasRepo := strings.Cut(item, "=")
+		path = strings.TrimSpace(path)
+		repo = strings.TrimSpace(repo)
+		if path == "" {
+			continue
+		}
+		target := ScanTarget{Path: path}
+		if hasRepo {
+			target.Repository = repo
+		}
+		targets = append(targets, target)
+	}
+	return targets
 }
 
 // loadDotEnv は .env ファイルから KEY=VALUE 行を読み込む。既存の環境変数は
