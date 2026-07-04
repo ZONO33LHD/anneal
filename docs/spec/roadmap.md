@@ -69,7 +69,21 @@
 | 4b | `[anneal]` LLM 呼び出しを PromptProvider 経由に差替 | anneal | ~90行 | 採用/canary 版があればその版のプロンプト文で LLM 実行 | 4a |
 
 - 4a: `domain/gateway` に `PromptProvider`（version, key → template）/ infra カタログ実装（`prompt_v1` = 現行文言逐語コピー）/ registry 配線 / golden test で差分ゼロ担保
-- 4b: `engine_analysis.go`・`anneal.go` の 4 箇所の `llm.Generate` を `PromptProvider.For(rec.AgentVersion, key)` 経由に置換
+- 4b: 判断プロンプト（`engine_analysis.go` のリスク/影響分析 1 箇所）の `llm.Generate` を `PromptProvider.For(rec.AgentVersion, key)` 経由に置換
+
+#### 設計方針（dig で確定）
+
+段階移行方式：**まず A（版で引ける配線）を安全に作り、自律改善は C へ拡張**する。B（LLM 生成文の即時直挿し）は非決定・インジェクション risk のため採らない。
+
+| # | 論点 | 決定 |
+|---|---|---|
+| 1 | プロンプト差替の作り方 | **A → 段階的に C**。B は不採用 |
+| 2 | 「版 → プロンプト」の表現 | **A''：`{Base, Appendix}` 構造体**。A では全版 `Appendix=""`、C では `Appendix = ProposedChange` を詰めるだけ。ポート契約 `For(version, key) → string` は A/C 共通で不変（内部で `Base+Appendix` を結合） |
+| 3 | 版管理する対象プロンプト | **判断プロンプト 1 本のみ**（`engine_analysis.go` のリスク/影響分析）。改善ループの `ProposedChange` が狙う対象と一致。ci-summary / pr-body / メタプロンプト（hypothesis 等）は対象外。拡張は `key` 追加で対応 |
+| 4 | カタログに無い版のフォールバック | **A1：既定版 `prompt_v1` にフォールバック**。パイプラインは止めない |
+| 5 | A / C の線引き | **A 単体** = 版差し替えの配線を通し「手書きカタログ版なら効く」まで。ループが自動生成した版が実際に別プロンプトになるのは **C から**。デモの「78.2→84.7」は A の時点でも**手書き `prompt_v2` を 1 本カタログに仕込めば実演可能** |
+
+> ⚠️ **A 単体は生成版に関しては no-op のまま**（未知版は `prompt_v1` にフォールバックするため）。自律的な「使うほど賢くなる」は C（`Appendix = ProposedChange` の適用）で初めて成立する。C 着手時にサニタイズ／承認フローを別途設計する（懸念 #5）。
 
 ---
 
