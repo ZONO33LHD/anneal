@@ -6,6 +6,10 @@ data "google_service_account" "runtime" {
   account_id = "anneal-runtime"
 }
 
+data "google_service_account" "scheduler" {
+  account_id = "anneal-scheduler"
+}
+
 locals {
   # var.image 未指定時は Artifact Registry の :latest を使う。
   # （artifactregistry モジュールの repository_id=cloudrun, イメージ名=anneal に一致）

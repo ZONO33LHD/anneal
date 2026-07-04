@@ -14,3 +14,14 @@ variable "image" {
   type        = string
   default     = ""
 }
+
+variable "internal_oidc_audience" {
+  description = "Cloud Scheduler が内部 endpoint を呼ぶ OIDC token の audience。scheduler モジュールと同じ値にする。"
+  type        = string
+  default     = "anneal-scheduler"
+}
+
+variable "scan_targets" {
+  description = "ANNEAL_SCAN_TARGETS に渡す scan 対象。カンマ区切りで /path/to/repo または /path/to/repo=owner/repo。"
+  type        = string
+}

@@ -38,6 +38,18 @@ resource "google_cloud_run_v2_service" "anneal" {
         name  = "GOOGLE_CLOUD_PROJECT"
         value = var.project_id
       }
+      env {
+        name  = "ANNEAL_INTERNAL_OIDC_AUDIENCE"
+        value = var.internal_oidc_audience
+      }
+      env {
+        name  = "ANNEAL_INTERNAL_OIDC_EMAIL"
+        value = data.google_service_account.scheduler.email
+      }
+      env {
+        name  = "ANNEAL_SCAN_TARGETS"
+        value = var.scan_targets
+      }
 
       # secret は値を埋め込まず、Secret Manager の最新バージョンを参照する。
       env {

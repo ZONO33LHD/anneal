@@ -12,3 +12,5 @@ terraform/resources/anneal-prd/iam:
   - 'terraform/resources/anneal-prd/iam/**'
 terraform/resources/anneal-prd/cloudrun:
   - 'terraform/resources/anneal-prd/cloudrun/**'
+terraform/resources/anneal-prd/scheduler:
+  - 'terraform/resources/anneal-prd/scheduler/**'
