@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"strings"
 
 	"github.com/ZONO33LHD/anneal/domain/gateway"
 	"github.com/ZONO33LHD/anneal/domain/model"
@@ -12,6 +13,8 @@ import (
 type WebhookSignal string
 
 const (
+	// WebhookSignalAlertDetected は alert 起点で新しい更新候補を検知したことを表す。
+	WebhookSignalAlertDetected WebhookSignal = "alert_detected"
 	// WebhookSignalCIPassed は CI が成功系の conclusion で完了したことを表す。
 	WebhookSignalCIPassed WebhookSignal = "ci_passed"
 	// WebhookSignalCIFailed は CI が失敗系の conclusion で完了したことを表す。
@@ -33,6 +36,42 @@ type WebhookEvent struct {
 	Branch            string
 	HeadSHA           string
 	Signal            WebhookSignal
+	Alert             *WebhookAlert
+}
+
+// WebhookAlert は PR ではなく脆弱性 alert 等を起点に届く更新候補である。
+type WebhookAlert struct {
+	PackageName      string
+	Ecosystem        model.Ecosystem
+	CurrentVersion   string
+	TargetVersion    string
+	VulnerableRange  string
+	AdvisoryID       string
+	AdvisorySeverity string
+	AdvisorySummary  string
+	AdvisoryURL      string
+}
+
+// AlertUpdateKey は alert を既存/新規 record と対応付けるキーを返す。
+func AlertUpdateKey(event WebhookEvent) (string, bool) {
+	if event.Repository == "" || event.Alert == nil {
+		return "", false
+	}
+	if event.Alert.PackageName == "" || event.Alert.TargetVersion == "" {
+		return "", false
+	}
+	return model.UpdateKey(event.Repository, event.Alert.PackageName, event.Alert.TargetVersion), true
+}
+
+// AlertCVEInfo は alert payload を DependencyUpdate の CVEInfo へ写す。
+func AlertCVEInfo(alert WebhookAlert) *model.CVEInfo {
+	return &model.CVEInfo{
+		ID:             alert.AdvisoryID,
+		Severity:       strings.ToLower(alert.AdvisorySeverity),
+		AffectedRange:  alert.VulnerableRange,
+		PatchedVersion: alert.TargetVersion,
+		Summary:        alert.AdvisorySummary,
+	}
 }
 
 // WebhookUsecase は webhook イベントから該当レコードを探し、エンジンへ渡す。

@@ -110,6 +110,47 @@ func TestWebhookUsecaseNoopsWhenRecordNotFound(t *testing.T) {
 	}
 }
 
+func TestAlertUpdateKey(t *testing.T) {
+	key, ok := usecase.AlertUpdateKey(usecase.WebhookEvent{
+		Repository: "Acme/Repo",
+		Signal:     usecase.WebhookSignalAlertDetected,
+		Alert: &usecase.WebhookAlert{
+			PackageName:   "AXIOS",
+			TargetVersion: "1.7.0",
+		},
+	})
+	if !ok {
+		t.Fatal("ok=false, want true")
+	}
+	if key != "acme/repo::axios::1.7.0" {
+		t.Fatalf("key=%q", key)
+	}
+}
+
+func TestAlertUpdateKeyRejectsIncompleteEvent(t *testing.T) {
+	_, ok := usecase.AlertUpdateKey(usecase.WebhookEvent{
+		Repository: "acme/repo",
+		Signal:     usecase.WebhookSignalAlertDetected,
+		Alert:      &usecase.WebhookAlert{PackageName: "axios"},
+	})
+	if ok {
+		t.Fatal("ok=true, want false")
+	}
+}
+
+func TestAlertCVEInfo(t *testing.T) {
+	cve := usecase.AlertCVEInfo(usecase.WebhookAlert{
+		TargetVersion:    "1.7.0",
+		VulnerableRange:  "<1.7.0",
+		AdvisoryID:       "GHSA-1234",
+		AdvisorySeverity: "HIGH",
+		AdvisorySummary:  "summary",
+	})
+	if cve.ID != "GHSA-1234" || cve.Severity != "high" || cve.PatchedVersion != "1.7.0" {
+		t.Fatalf("cve=%#v", cve)
+	}
+}
+
 type fakeUpdateRepository struct {
 	active []model.DependencyUpdate
 	puts   []model.DependencyUpdate
