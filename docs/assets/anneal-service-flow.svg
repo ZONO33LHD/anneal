@@ -18,7 +18,7 @@
       <path d="M2,2 L10,6 L2,10 Z" fill="#93a8c4"/>
     </marker>
     <style>
-      .font { font-family: "Hiragino Sans", "Yu Gothic", "Noto Sans CJK JP", "Noto Sans JP", Arial, sans-serif; }
+      .font { font-family: sans-serif; }
       .title { font-size: 48px; font-weight: 800; fill: #f8fafc; }
       .subtitle { font-size: 22px; font-weight: 500; fill: #cbd5e1; }
       .section-title { font-size: 28px; font-weight: 800; fill: #f8fafc; }
@@ -26,14 +26,14 @@
       .body { font-size: 17px; font-weight: 500; fill: #cbd5e1; }
       .small { font-size: 14px; font-weight: 600; fill: #9fb0c8; }
       .tiny { font-size: 12px; font-weight: 700; fill: #9fb0c8; letter-spacing: .03em; }
-      .card { fill: rgba(255,255,255,0.07); stroke: rgba(255,255,255,0.14); stroke-width: 1.3; }
-      .step { fill: rgba(255,255,255,0.08); stroke: rgba(255,255,255,0.16); stroke-width: 1.2; }
+      .card { fill: #ffffff; fill-opacity: 0.07; stroke: #ffffff; stroke-opacity: 0.14; stroke-width: 1.3; }
+      .step { fill: #ffffff; fill-opacity: 0.08; stroke: #ffffff; stroke-opacity: 0.16; stroke-width: 1.2; }
       .node { fill: #192b3e; stroke: #39506b; stroke-width: 1.5; }
       .node-hot { fill: #2f2633; stroke: #f28b55; stroke-width: 1.6; }
       .node-good { fill: #173229; stroke: #35c2a1; stroke-width: 1.6; }
       .muted-line { stroke: #71839d; stroke-width: 3; fill: none; marker-end: url(#arrow); opacity: .9; }
-      .pill { fill: rgba(53,194,161,0.13); stroke: rgba(53,194,161,0.45); stroke-width: 1.2; }
-      .orange-pill { fill: rgba(242,139,85,0.13); stroke: rgba(242,139,85,0.45); stroke-width: 1.2; }
+      .pill { fill: #35c2a1; fill-opacity: 0.13; stroke: #35c2a1; stroke-opacity: 0.45; stroke-width: 1.2; }
+      .orange-pill { fill: #f28b55; fill-opacity: 0.13; stroke: #f28b55; stroke-opacity: 0.45; stroke-width: 1.2; }
     </style>
   </defs>
 
@@ -46,7 +46,7 @@
     <text x="72" y="121" class="subtitle">依存更新・CVE対応を「検知 → PR → CI → レビュー → 学習」まで1つのループで回す</text>
 
     <g transform="translate(1265 55)">
-      <rect width="265" height="70" rx="14" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.16)"/>
+      <rect width="265" height="70" rx="14" fill="#ffffff" fill-opacity="0.08" stroke="#ffffff" stroke-opacity="0.16"/>
       <text x="20" y="28" class="small">人間は判断に集中</text>
       <text x="20" y="53" class="small">Anneal は更新作業を継続実行</text>
     </g>
@@ -162,9 +162,9 @@
     <g transform="translate(60 855)" filter="url(#shadow)">
       <rect width="1480" height="95" rx="22" class="card"/>
       <text x="30" y="38" class="section-title" font-size="24">役割分担</text>
-      <rect x="190" y="24" width="590" height="50" rx="14" fill="rgba(53,194,161,0.10)" stroke="rgba(53,194,161,0.35)"/>
+      <rect x="190" y="24" width="590" height="50" rx="14" fill="#35c2a1" fill-opacity="0.10" stroke="#35c2a1" stroke-opacity="0.35"/>
       <text x="215" y="56" class="body">Anneal: 検知・影響分析・PR作成・CI追跡・自己修復・スコアリング</text>
-      <rect x="815" y="24" width="610" height="50" rx="14" fill="rgba(242,139,85,0.11)" stroke="rgba(242,139,85,0.35)"/>
+      <rect x="815" y="24" width="610" height="50" rx="14" fill="#f28b55" fill-opacity="0.11" stroke="#f28b55" stroke-opacity="0.35"/>
       <text x="840" y="56" class="body">人間: 初期設定・PRレビュー・高リスク判断・承認/マージ</text>
     </g>
   </g>
