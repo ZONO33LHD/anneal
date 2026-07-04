@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/ZONO33LHD/anneal/domain/ctxkey"
+	"github.com/ZONO33LHD/anneal/domain/model"
 	"github.com/ZONO33LHD/anneal/usecase"
 )
 
@@ -22,6 +23,7 @@ func TestGitHubWebhookHandlerAcceptsSupportedEvents(t *testing.T) {
 		body       string
 		wantSignal usecase.WebhookSignal
 		wantPR     int
+		wantAlert  bool
 	}{
 		{
 			name:      "check suite passed",
@@ -85,6 +87,30 @@ func TestGitHubWebhookHandlerAcceptsSupportedEvents(t *testing.T) {
 			wantSignal: usecase.WebhookSignalPullRequestClosed,
 			wantPR:     42,
 		},
+		{
+			name:      "dependabot alert created",
+			eventName: "dependabot_alert",
+			body: `{
+				"action": "created",
+				"repository": {"full_name": "acme/demo"},
+				"alert": {
+					"html_url": "https://github.com/acme/demo/security/dependabot/1",
+					"security_advisory": {
+						"ghsa_id": "GHSA-xxxx-yyyy-zzzz",
+						"cve_id": "CVE-2026-1234",
+						"severity": "high",
+						"summary": "demo vulnerability"
+					},
+					"security_vulnerability": {
+						"vulnerable_version_range": "< 1.2.3",
+						"package": {"ecosystem": "npm", "name": "lodash"},
+						"first_patched_version": {"identifier": "1.2.3"}
+					}
+				}
+			}`,
+			wantSignal: usecase.WebhookSignalAlertDetected,
+			wantAlert:  true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -114,6 +140,16 @@ func TestGitHubWebhookHandlerAcceptsSupportedEvents(t *testing.T) {
 			}
 			if webhook.event.Signal != tt.wantSignal {
 				t.Fatalf("signal=%s, want %s", webhook.event.Signal, tt.wantSignal)
+			}
+			if tt.wantAlert {
+				if webhook.event.Alert == nil {
+					t.Fatal("alert=nil, want alert")
+				}
+				if webhook.event.Alert.PackageName != "lodash" ||
+					webhook.event.Alert.TargetVersion != "1.2.3" ||
+					webhook.event.Alert.Ecosystem != model.EcosystemNPM {
+					t.Fatalf("alert=%+v", webhook.event.Alert)
+				}
 			}
 		})
 	}

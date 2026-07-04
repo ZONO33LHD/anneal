@@ -151,16 +151,90 @@ func TestAlertCVEInfo(t *testing.T) {
 	}
 }
 
+func TestWebhookUsecaseCreatesDetectedRecordFromAlert(t *testing.T) {
+	updates := &fakeUpdateRepository{}
+	engine := &fakeEngineUsecase{}
+	uc := usecase.NewWebhookUsecase(updates, engine, webhookNoopLogger{})
+
+	moved, err := uc.Handle(context.Background(), usecase.WebhookEvent{
+		Repository: "acme/demo",
+		Signal:     usecase.WebhookSignalAlertDetected,
+		Alert: &usecase.WebhookAlert{
+			PackageName:      "lodash",
+			Ecosystem:        model.EcosystemNPM,
+			CurrentVersion:   "1.2.0",
+			TargetVersion:    "1.2.3",
+			VulnerableRange:  "< 1.2.3",
+			AdvisoryID:       "CVE-2026-1234",
+			AdvisorySeverity: "high",
+			AdvisorySummary:  "demo vulnerability",
+		},
+	})
+	if err != nil {
+		t.Fatalf("Handle: %v", err)
+	}
+	if !moved {
+		t.Fatal("moved=false, want true")
+	}
+	if len(engine.dispatched) != 0 {
+		t.Fatalf("dispatch calls=%d, want 0", len(engine.dispatched))
+	}
+	if len(updates.puts) != 1 {
+		t.Fatalf("Put calls=%d, want 1", len(updates.puts))
+	}
+	got := updates.puts[0]
+	if got.UpdateKey != "acme/demo::lodash::1.2.3" || got.Status != model.StateDetected {
+		t.Fatalf("put record=%#v", got)
+	}
+	if got.Priority != model.PriorityHigh || got.RiskLevel != model.RiskHigh {
+		t.Fatalf("priority=%s risk=%s", got.Priority, got.RiskLevel)
+	}
+	if got.CVE == nil || got.CVE.ID != "CVE-2026-1234" || got.CVE.PatchedVersion != "1.2.3" {
+		t.Fatalf("cve=%#v", got.CVE)
+	}
+}
+
+func TestWebhookUsecaseDoesNotDuplicateActiveAlertRecord(t *testing.T) {
+	existing := testutil.MakeUpdate()
+	existing.UpdateKey = "acme/demo::lodash::1.2.3"
+	updates := &fakeUpdateRepository{activeByKey: map[string]*model.DependencyUpdate{
+		existing.UpdateKey: &existing,
+	}}
+	uc := usecase.NewWebhookUsecase(updates, &fakeEngineUsecase{}, webhookNoopLogger{})
+
+	moved, err := uc.Handle(context.Background(), usecase.WebhookEvent{
+		Repository: "acme/demo",
+		Signal:     usecase.WebhookSignalAlertDetected,
+		Alert: &usecase.WebhookAlert{
+			PackageName:   "lodash",
+			TargetVersion: "1.2.3",
+		},
+	})
+	if err != nil {
+		t.Fatalf("Handle: %v", err)
+	}
+	if moved {
+		t.Fatal("moved=true, want false")
+	}
+	if len(updates.puts) != 0 {
+		t.Fatalf("Put calls=%d, want 0", len(updates.puts))
+	}
+}
+
 type fakeUpdateRepository struct {
-	active []model.DependencyUpdate
-	puts   []model.DependencyUpdate
+	active      []model.DependencyUpdate
+	activeByKey map[string]*model.DependencyUpdate
+	puts        []model.DependencyUpdate
 }
 
 func (r *fakeUpdateRepository) Get(string) (*model.DependencyUpdate, error) {
 	return nil, nil
 }
 
-func (r *fakeUpdateRepository) GetActive(string) (*model.DependencyUpdate, error) {
+func (r *fakeUpdateRepository) GetActive(key string) (*model.DependencyUpdate, error) {
+	if r.activeByKey != nil {
+		return r.activeByKey[key], nil
+	}
 	return nil, nil
 }
 

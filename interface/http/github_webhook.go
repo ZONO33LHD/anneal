@@ -15,6 +15,7 @@ import (
 
 	"github.com/ZONO33LHD/anneal/domain/ctxkey"
 	"github.com/ZONO33LHD/anneal/domain/gateway"
+	"github.com/ZONO33LHD/anneal/domain/model"
 	"github.com/ZONO33LHD/anneal/usecase"
 )
 
@@ -126,6 +127,8 @@ func parseGitHubEvent(eventName string, body []byte) (usecase.WebhookEvent, bool
 		return parsePullRequestReview(body)
 	case "pull_request":
 		return parsePullRequest(body)
+	case "dependabot_alert":
+		return parseDependabotAlert(body)
 	default:
 		return usecase.WebhookEvent{}, false, nil
 	}
@@ -253,6 +256,71 @@ func pullRequestEvent(
 		Branch:            pr.Head.Ref,
 		HeadSHA:           pr.Head.SHA,
 		Signal:            signal,
+	}
+}
+
+type dependabotAlertPayload struct {
+	Action     string `json:"action"`
+	Repository struct {
+		FullName string `json:"full_name"`
+	} `json:"repository"`
+	Alert struct {
+		HTMLURL          string `json:"html_url"`
+		SecurityAdvisory struct {
+			GHSAID   string `json:"ghsa_id"`
+			CVEID    string `json:"cve_id"`
+			Severity string `json:"severity"`
+			Summary  string `json:"summary"`
+		} `json:"security_advisory"`
+		SecurityVulnerability struct {
+			VulnerableVersionRange string `json:"vulnerable_version_range"`
+			Package                struct {
+				Ecosystem string `json:"ecosystem"`
+				Name      string `json:"name"`
+			} `json:"package"`
+			FirstPatchedVersion struct {
+				Identifier string `json:"identifier"`
+			} `json:"first_patched_version"`
+		} `json:"security_vulnerability"`
+	} `json:"alert"`
+}
+
+func parseDependabotAlert(body []byte) (usecase.WebhookEvent, bool, error) {
+	var payload dependabotAlertPayload
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return usecase.WebhookEvent{}, false, fmt.Errorf("parse dependabot_alert payload: %w", err)
+	}
+	if payload.Action != "created" && payload.Action != "reopened" {
+		return usecase.WebhookEvent{}, false, nil
+	}
+	advisoryID := payload.Alert.SecurityAdvisory.CVEID
+	if advisoryID == "" {
+		advisoryID = payload.Alert.SecurityAdvisory.GHSAID
+	}
+	vuln := payload.Alert.SecurityVulnerability
+	return usecase.WebhookEvent{
+		Repository: payload.Repository.FullName,
+		Signal:     usecase.WebhookSignalAlertDetected,
+		Alert: &usecase.WebhookAlert{
+			PackageName:      vuln.Package.Name,
+			Ecosystem:        dependabotEcosystem(vuln.Package.Ecosystem),
+			CurrentVersion:   vuln.VulnerableVersionRange,
+			TargetVersion:    vuln.FirstPatchedVersion.Identifier,
+			VulnerableRange:  vuln.VulnerableVersionRange,
+			AdvisoryID:       advisoryID,
+			AdvisorySeverity: payload.Alert.SecurityAdvisory.Severity,
+			AdvisorySummary:  payload.Alert.SecurityAdvisory.Summary,
+			AdvisoryURL:      payload.Alert.HTMLURL,
+		},
+	}, true, nil
+}
+
+func dependabotEcosystem(raw string) model.Ecosystem {
+	switch strings.ToLower(raw) {
+	case "go", "gomod", "go modules", "go module":
+		return model.EcosystemGo
+	default:
+		return model.EcosystemNPM
 	}
 }
 
