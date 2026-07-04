@@ -17,6 +17,7 @@ import (
 	"github.com/ZONO33LHD/anneal/domain/config"
 	"github.com/ZONO33LHD/anneal/domain/ctxkey"
 	"github.com/ZONO33LHD/anneal/domain/policy"
+	"github.com/ZONO33LHD/anneal/infrastructure/auth"
 	applog "github.com/ZONO33LHD/anneal/infrastructure/log"
 	webhookhttp "github.com/ZONO33LHD/anneal/interface/http"
 	"github.com/ZONO33LHD/anneal/registry"
@@ -171,6 +172,22 @@ func cmdServe() error {
 		Webhook: reg.Webhook,
 		Logger:  reg.Logger,
 	}))
+	var internalAuth webhookhttp.InternalTaskAuthenticator
+	if cfg.InternalOIDCAudience != "" {
+		internalAuth = auth.NewOIDCValidator(cfg.InternalOIDCAudience, cfg.InternalOIDCEmail)
+	}
+	internalTasks := webhookhttp.NewInternalTaskHandler(webhookhttp.InternalTaskOptions{
+		Token:         cfg.InternalToken,
+		Authenticator: internalAuth,
+		ScanTargets:   cfg.ScanTargets,
+		Scan:          reg.Scan,
+		Engine:        reg.Engine,
+		Anneal:        reg.Anneal,
+		Adoption:      reg.Adoption,
+		Logger:        reg.Logger,
+	})
+	mux.Handle("/internal/scan", internalTasks)
+	mux.Handle("/internal/tick", internalTasks)
 	mux.Handle("/", webhookhttp.NewDashboardHandler(webhookhttp.DashboardOptions{
 		Dashboard: reg.Dashboard,
 		Logger:    reg.Logger,
