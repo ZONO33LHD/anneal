@@ -5,6 +5,11 @@ resource "google_service_account" "runtime" {
   display_name = "Anneal Cloud Run runtime"
 }
 
+resource "google_service_account" "scheduler" {
+  account_id   = "anneal-scheduler"
+  display_name = "Anneal Cloud Scheduler invoker"
+}
+
 # 最小権限の付与:
 # - datastore.user:        Firestore（T3 の永続化先）への読み書き
 # - secretmanager.secretAccessor: GITHUB_TOKEN 等の secret 値の取得
