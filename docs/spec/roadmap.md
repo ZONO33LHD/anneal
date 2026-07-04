@@ -4,6 +4,8 @@
 
 Anneal の勝ち筋は、単なる依存更新 Bot ではなく、**PR 作成・CI 修復・評価・自己改善が一つのループとして閉じていること**にある。ロードマップでは、まず実運用に必要な信頼性を固め、その後に導入容易性・拡散性・自己改善の差別化を強める。
 
+![Anneal の使われ方と導入イメージ](../assets/anneal-service-flow.jpg)
+
 ---
 
 ## 1. 現在地
@@ -17,19 +19,21 @@ Anneal の勝ち筋は、単なる依存更新 Bot ではなく、**PR 作成・
 - 状態機械ベースの lifecycle。
 - Gemini / GitHub / Slack の gateway 抽象化と mock fallback。
 - ローカル JSON store。
-- デモ用 fixture による scan → PR 相当 → CI 失敗 → 修復 → scoring → Annealing Loop。
+- Firestore store。
+- デモ用 fixture による scan → PR → CI 失敗 → 修復 → scoring → Annealing Loop。
+- GitHub 実モードでの branch / commit / PR 作成。
 - GitHub Webhook handler。
 - 簡易 dashboard。
 - A/B 採用・canary・rollback のドメイン骨格。
-- Terraform / CI の初期構成。
+- Terraform / CI / image build / Cloud Run deploy の初期構成。
 
 ### まだ弱いこと
 
-- GitHub 実モードで branch / commit / PR を本当に作る体験が未完成。
-- Firestore / Cloud Run / Pub/Sub / Scheduler の本番運用基盤が未完成。
+- Cloud Scheduler による定期 `scan` / `tick` の自動起動が未配線。
 - GitHub App としての導入導線がない。
 - 対象リポジトリごとの設定 UX が弱い。
 - 実運用 KPI を追える dashboard / metrics がまだ薄い。
+- Dependabot Alert Webhook や npm / Go 以外の ecosystem は未対応。
 - 自己改善は強い差別化だが、最初から前面に出すと説明コストが高い。
 
 ---
@@ -38,37 +42,31 @@ Anneal の勝ち筋は、単なる依存更新 Bot ではなく、**PR 作成・
 
 | Phase | 期間目安 | ゴール | 成功条件 |
 |---|---:|---|---|
-| Phase 0 | 現在〜1週間 | 実 PR 作成までを通す | 実 GitHub repo に対して安全に PR を作れる |
-| Phase 1 | 2〜3週間 | MVP を実運用できる | 1 repo で毎日 scan し、人間が review できる PR を出す |
+| Phase 0 | 現在〜1週間 | 使われ方と導入導線を明確にする | 初見で demo / local / production の違いが分かる |
+| Phase 1 | 2〜3週間 | MVP を継続運用できる | 1 repo で毎日 scan し、人間が review できる PR を出す |
 | Phase 2 | 1〜2か月 | チーム導入に耐える | 複数 repo、Webhook、dashboard、通知、設定管理が安定 |
 | Phase 3 | 2〜3か月 | 拡散しやすいプロダクトにする | GitHub App / README / demo / quickstart で導入が短い |
 | Phase 4 | 3か月〜 | 自己改善を差別化として磨く | スコア改善と rollback を実データで説明できる |
 
 ---
 
-## 3. Phase 0: 実 PR 作成 MVP
+## 3. Phase 0: 導入理解 MVP
 
-最優先は「Anneal が実 repo に対して依存更新 PR を作れる」状態にすること。ここが通らないと、以後の CI 監視・スコアリング・自己改善が全部デモ止まりになる。
+最優先は「Anneal は何をして、人間は何をすればよいか」を一目で分かる状態にすること。機能が揃っていても、導入手順と日々の使われ方が見えないと試されない。
 
 ### Must
 
-- GitHub 実モードの `CreateBranchAndPR` を実装する。
-- `ChangedFiles` を実ブランチに commit し、PR を作成する。
-- 実装できない場合は成功扱いにせず、明確な error を返す。
-- CI pending / running / completed を区別できるようにする。
-- PR 本文に以下を必ず入れる。
-  - 何を更新したか
-  - なぜ必要か
-  - 影響範囲
-  - リスク
-  - 人間が見るべき点
+- README の上部で「導入3ステップ」と「日々の運用ループ」を図解する。
+- `demo` / local polling / Cloud Run production の3モードを明確に分ける。
+- 初回導入に必要な環境変数・secret・Webhook URL を一覧化する。
+- `.anneal.yml` の最小サンプルを用意する。
+- 実 GitHub repo で初回 PR を作るまでの runbook を作る。
 
 ### Should
 
-- branch 名を安定化する。
-  - 例: `anneal/<ecosystem>/<package>-<target_version>`
-- PR 重複時は既存 PR を再利用または更新する。
-- lock file 更新の失敗は人間レビュー待ちに回す。
+- `anneal doctor` の仕様を決める。
+- PR before / after のサンプルを README に載せる。
+- 失敗時の代表的な復旧手順を短く書く。
 
 ### やらないこと
 
@@ -84,10 +82,8 @@ Anneal の勝ち筋は、単なる依存更新 Bot ではなく、**PR 作成・
 
 ### Must
 
-- GitHub Webhook で CI 完了、PR review、merge / close を処理する。
-- `anneal serve` を Cloud Run で動かす。
-- Firestore store を実装し、JSON store と切り替え可能にする。
-- Cloud Scheduler で scan / reconcile / improve / adopt を定期実行する。
+- Cloud Scheduler で `scan` / `tick` / `reconcile` / `improve` / `adopt` を定期実行する。
+- Cloud Run / Firestore / Webhook / Secrets の本番 runbook を固める。
 - Slack 通知を「判断に必要な情報」に絞る。
 - `.anneal.yml` の repo 設定を固める。
   - 対象 ecosystem
@@ -227,11 +223,11 @@ Anneal らしさの核。最初から全自動で強く見せるより、運用�
 
 ### P0
 
-1. GitHub 実 PR 作成。
-2. CI pending / pass / fail の正確な扱い。
-3. Firestore store。
-4. Cloud Run / Scheduler / Webhook 本番起動。
-5. `.anneal.yml` の最小設定。
+1. README / roadmap の導入図解。
+2. Cloud Scheduler による定期 `scan` / `tick`。
+3. `.anneal.yml` の最小設定とサンプル。
+4. 本番 runbook と `anneal doctor` 仕様。
+5. dashboard の運用 KPI 強化。
 
 ### P1
 
@@ -269,7 +265,7 @@ Anneal らしさの核。最初から全自動で強く見せるより、運用�
 ### 実装コスト
 
 - 既存の clean architecture と gateway port を崩さない。
-- 本番化は Firestore / Cloud Run / Scheduler / Pub/Sub に寄せる。
+- 本番運用の残りは Cloud Scheduler / Pub/Sub / GitHub App に寄せる。
 - GitHub App 化は Phase 3 まで待つ。最初は PAT / GitHub Actions secret でもよい。
 
 ### シンプルさ
@@ -316,15 +312,14 @@ Anneal らしさの核。最初から全自動で強く見せるより、運用�
 
 ## 11. 直近の実装順
 
-1. `infrastructure/git/github.go` の実 PR 作成。
-2. CI 状態モデルの pending 対応。
-3. Webhook 経由で CI 結果を状態機械に反映。
-4. Firestore store。
-5. Cloud Run 起動と Scheduler job。
-6. `.anneal.yml` schema 整理。
-7. dashboard を運用 KPI ベースに拡張。
-8. GitHub App 化。
-9. A/B adoption を実データで回す。
+1. README / roadmap に導入図を追加。
+2. Cloud Scheduler job で `scan` / `tick` / `reconcile` を自動化。
+3. `.anneal.yml` schema とサンプルを整理。
+4. `anneal doctor` を追加。
+5. dashboard を運用 KPI ベースに拡張。
+6. Dependabot Alert Webhook を追加。
+7. GitHub App 化。
+8. A/B adoption を実データで回す。
 
 ---
 
@@ -339,4 +334,3 @@ Anneal らしさの核。最初から全自動で強く見せるより、運用�
 | 二重 PR 発生 | 0件 | 0件 |
 | high risk 誤判定 | 月1件以下 | 月0〜1件 |
 | 導入時間 | 30分以内 | 10分以内 |
-

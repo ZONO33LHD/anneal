@@ -12,6 +12,10 @@ Anneal は、依存ライブラリ・脆弱性のアップグレードを AI が
 - 外部サービス（Gemini / GitHub / Slack）は **domain のポート**として抽象化。API キーが無ければ自動でモックにフォールバックし、**鍵ゼロで E2E が通る**。`.env` に鍵を入れると実サービスへ切替。
 - 永続ストアはローカル JSON / **Firestore** を `ANNEAL_STORE_BACKEND` で切替（`repository` ポート）。本番は **Cloud Run + Firestore** で稼働。
 
+## 使われ方・導入イメージ
+
+![Anneal の使われ方と導入イメージ](docs/assets/anneal-service-flow.jpg)
+
 ## クイックスタート
 
 ```bash

@@ -1,0 +1,171 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000" role="img" aria-labelledby="title desc">
+  <title id="title">Anneal の使われ方と導入イメージ</title>
+  <desc id="desc">Anneal の導入手順、日々の依存更新フロー、人間と Anneal の役割分担を説明する図。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#102033"/>
+      <stop offset="48%" stop-color="#172434"/>
+      <stop offset="100%" stop-color="#241d2c"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#35c2a1"/>
+      <stop offset="100%" stop-color="#4f8cff"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#000000" flood-opacity="0.22"/>
+    </filter>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#93a8c4"/>
+    </marker>
+    <style>
+      .font { font-family: "Hiragino Sans", "Yu Gothic", "Noto Sans CJK JP", "Noto Sans JP", Arial, sans-serif; }
+      .title { font-size: 48px; font-weight: 800; fill: #f8fafc; }
+      .subtitle { font-size: 22px; font-weight: 500; fill: #cbd5e1; }
+      .section-title { font-size: 28px; font-weight: 800; fill: #f8fafc; }
+      .label { font-size: 20px; font-weight: 800; fill: #f8fafc; }
+      .body { font-size: 17px; font-weight: 500; fill: #cbd5e1; }
+      .small { font-size: 14px; font-weight: 600; fill: #9fb0c8; }
+      .tiny { font-size: 12px; font-weight: 700; fill: #9fb0c8; letter-spacing: .03em; }
+      .card { fill: rgba(255,255,255,0.07); stroke: rgba(255,255,255,0.14); stroke-width: 1.3; }
+      .step { fill: rgba(255,255,255,0.08); stroke: rgba(255,255,255,0.16); stroke-width: 1.2; }
+      .node { fill: #192b3e; stroke: #39506b; stroke-width: 1.5; }
+      .node-hot { fill: #2f2633; stroke: #f28b55; stroke-width: 1.6; }
+      .node-good { fill: #173229; stroke: #35c2a1; stroke-width: 1.6; }
+      .muted-line { stroke: #71839d; stroke-width: 3; fill: none; marker-end: url(#arrow); opacity: .9; }
+      .pill { fill: rgba(53,194,161,0.13); stroke: rgba(53,194,161,0.45); stroke-width: 1.2; }
+      .orange-pill { fill: rgba(242,139,85,0.13); stroke: rgba(242,139,85,0.45); stroke-width: 1.2; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="1000" fill="url(#bg)"/>
+  <circle cx="1430" cy="115" r="170" fill="#35c2a1" opacity="0.08"/>
+  <circle cx="1260" cy="910" r="210" fill="#f28b55" opacity="0.08"/>
+
+  <g class="font">
+    <text x="70" y="80" class="title">Anneal の使われ方と導入イメージ</text>
+    <text x="72" y="121" class="subtitle">依存更新・CVE対応を「検知 → PR → CI → レビュー → 学習」まで1つのループで回す</text>
+
+    <g transform="translate(1265 55)">
+      <rect width="265" height="70" rx="14" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.16)"/>
+      <text x="20" y="28" class="small">人間は判断に集中</text>
+      <text x="20" y="53" class="small">Anneal は更新作業を継続実行</text>
+    </g>
+
+    <g transform="translate(60 165)" filter="url(#shadow)">
+      <rect width="490" height="665" rx="22" class="card"/>
+      <text x="30" y="50" class="section-title">導入は3ステップ</text>
+
+      <g transform="translate(30 85)">
+        <rect width="430" height="150" rx="18" class="step"/>
+        <circle cx="38" cy="42" r="24" fill="url(#accent)"/>
+        <text x="30" y="50" font-size="24" font-weight="800" fill="#07151f">1</text>
+        <text x="78" y="40" class="label">対象リポジトリを決める</text>
+        <text x="78" y="72" class="body">GitHub repo に Anneal を接続</text>
+        <text x="78" y="100" class="body">`.anneal.yml` で対象・除外・承認条件を設定</text>
+        <text x="78" y="128" class="small">最初は1 repoから始めるのが安全</text>
+      </g>
+
+      <g transform="translate(30 255)">
+        <rect width="430" height="165" rx="18" class="step"/>
+        <circle cx="38" cy="42" r="24" fill="#f28b55"/>
+        <text x="30" y="50" font-size="24" font-weight="800" fill="#1b110a">2</text>
+        <text x="78" y="40" class="label">実行場所を選ぶ</text>
+        <text x="78" y="72" class="body">お試し: `anneal demo`</text>
+        <text x="78" y="100" class="body">ローカル: cron + `scan` / `tick`</text>
+        <text x="78" y="128" class="body">本番: Cloud Run + Firestore + Webhook</text>
+      </g>
+
+      <g transform="translate(30 445)">
+        <rect width="430" height="150" rx="18" class="step"/>
+        <circle cx="38" cy="42" r="24" fill="#8eb6ff"/>
+        <text x="30" y="50" font-size="24" font-weight="800" fill="#081527">3</text>
+        <text x="78" y="40" class="label">通知と確認先を用意</text>
+        <text x="78" y="72" class="body">Slack に重要イベントを通知</text>
+        <text x="78" y="100" class="body">Dashboard で状態・スコア・改善履歴を見る</text>
+        <text x="78" y="128" class="small">承認とマージは GitHub PR 上で行う</text>
+      </g>
+    </g>
+
+    <g transform="translate(585 165)" filter="url(#shadow)">
+      <rect width="955" height="665" rx="22" class="card"/>
+      <text x="30" y="50" class="section-title">日々の運用ループ</text>
+      <text x="30" y="82" class="body">Scheduler と GitHub Webhook が、同じ状態機械を1ステップずつ進める</text>
+
+      <g transform="translate(35 110)">
+        <rect width="168" height="42" rx="21" class="pill"/>
+        <text x="20" y="28" class="small">Cloud Scheduler</text>
+        <rect x="188" width="176" height="42" rx="21" class="orange-pill"/>
+        <text x="208" y="28" class="small">GitHub Webhook</text>
+      </g>
+
+      <g transform="translate(55 200)">
+        <rect width="180" height="112" rx="18" class="node-good"/>
+        <text x="24" y="34" class="tiny">1 SCAN</text>
+        <text x="24" y="65" class="label">依存・CVE検知</text>
+        <text x="24" y="94" class="small">npm / Go / OSV</text>
+      </g>
+      <g transform="translate(285 200)">
+        <rect width="180" height="112" rx="18" class="node"/>
+        <text x="24" y="34" class="tiny">2 ANALYZE</text>
+        <text x="24" y="65" class="label">影響範囲分析</text>
+        <text x="24" y="94" class="small">risk / confidence</text>
+      </g>
+      <g transform="translate(515 200)">
+        <rect width="180" height="112" rx="18" class="node-good"/>
+        <text x="24" y="34" class="tiny">3 PR</text>
+        <text x="24" y="65" class="label">更新PR作成</text>
+        <text x="24" y="94" class="small">branch / commit</text>
+      </g>
+      <g transform="translate(745 200)">
+        <rect width="180" height="112" rx="18" class="node"/>
+        <text x="24" y="34" class="tiny">4 CI</text>
+        <text x="24" y="65" class="label">テスト結果取得</text>
+        <text x="24" y="94" class="small">pass / fail / pending</text>
+      </g>
+
+      <path d="M240 256 H274" class="muted-line"/>
+      <path d="M470 256 H504" class="muted-line"/>
+      <path d="M700 256 H734" class="muted-line"/>
+      <path d="M835 318 V378" class="muted-line"/>
+
+      <g transform="translate(745 395)">
+        <rect width="180" height="112" rx="18" class="node-hot"/>
+        <text x="24" y="34" class="tiny">5 FIX</text>
+        <text x="24" y="65" class="label">失敗なら修復</text>
+        <text x="24" y="94" class="small">ログ分類・追加修正</text>
+      </g>
+      <g transform="translate(515 395)">
+        <rect width="180" height="112" rx="18" class="node-good"/>
+        <text x="24" y="34" class="tiny">6 REVIEW</text>
+        <text x="24" y="65" class="label">人間が確認</text>
+        <text x="24" y="94" class="small">承認 / マージ / 却下</text>
+      </g>
+      <g transform="translate(285 395)">
+        <rect width="180" height="112" rx="18" class="node"/>
+        <text x="24" y="34" class="tiny">7 SCORE</text>
+        <text x="24" y="65" class="label">品質を採点</text>
+        <text x="24" y="94" class="small">CI / review / merge</text>
+      </g>
+      <g transform="translate(55 395)">
+        <rect width="180" height="112" rx="18" class="node-hot"/>
+        <text x="24" y="34" class="tiny">8 IMPROVE</text>
+        <text x="24" y="65" class="label">失敗から改善</text>
+        <text x="24" y="94" class="small">A/B / canary / rollback</text>
+      </g>
+
+      <path d="M740 451 H706" class="muted-line"/>
+      <path d="M510 451 H476" class="muted-line"/>
+      <path d="M280 451 H246" class="muted-line"/>
+      <path d="M145 390 C130 350, 130 315, 145 300" class="muted-line"/>
+    </g>
+
+    <g transform="translate(60 855)" filter="url(#shadow)">
+      <rect width="1480" height="95" rx="22" class="card"/>
+      <text x="30" y="38" class="section-title" font-size="24">役割分担</text>
+      <rect x="190" y="24" width="590" height="50" rx="14" fill="rgba(53,194,161,0.10)" stroke="rgba(53,194,161,0.35)"/>
+      <text x="215" y="56" class="body">Anneal: 検知・影響分析・PR作成・CI追跡・自己修復・スコアリング</text>
+      <rect x="815" y="24" width="610" height="50" rx="14" fill="rgba(242,139,85,0.11)" stroke="rgba(242,139,85,0.35)"/>
+      <text x="840" y="56" class="body">人間: 初期設定・PRレビュー・高リスク判断・承認/マージ</text>
+    </g>
+  </g>
+</svg>
