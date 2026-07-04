@@ -36,6 +36,7 @@ var dataset = map[string]entry{
 			Summary:        "Terrapin attack on SSH transport (golang.org/x/crypto/ssh).",
 		}},
 	},
+	"pypi:requests": {latest: "2.32.3"},
 }
 
 // Mock は決定論的なデモ向けのオフラインメタデータソース。

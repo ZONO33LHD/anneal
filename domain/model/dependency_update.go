@@ -6,8 +6,9 @@ import "fmt"
 type Ecosystem string
 
 const (
-	EcosystemNPM Ecosystem = "npm"
-	EcosystemGo  Ecosystem = "go"
+	EcosystemNPM  Ecosystem = "npm"
+	EcosystemGo   Ecosystem = "go"
+	EcosystemPyPI Ecosystem = "pypi"
 )
 
 // RiskLevel は更新の予測される影響範囲（blast radius）である。

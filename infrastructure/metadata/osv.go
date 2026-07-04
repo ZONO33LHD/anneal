@@ -41,6 +41,18 @@ func (o *OSV) LatestVersion(ctx context.Context, eco model.Ecosystem, name, _ st
 		}
 		return out.Version, nil
 	}
+	if eco == model.EcosystemPyPI {
+		var out struct {
+			Info struct {
+				Version string `json:"version"`
+			} `json:"info"`
+		}
+		if err := o.getJSON(ctx, pypiLatestURL(name), &out); err != nil {
+			return "", fmt.Errorf("pypi latest %s: %w", name, err)
+		}
+		return out.Info.Version, nil
+	}
+
 	var out struct {
 		Version string `json:"Version"`
 	}
@@ -53,13 +65,9 @@ func (o *OSV) LatestVersion(ctx context.Context, eco model.Ecosystem, name, _ st
 }
 
 func (o *OSV) Advisories(ctx context.Context, eco model.Ecosystem, name, current string) ([]model.CVEInfo, error) {
-	ecoName := "npm"
-	if eco == model.EcosystemGo {
-		ecoName = "Go"
-	}
 	body, _ := json.Marshal(map[string]any{
 		"version": model.CleanVersion(current),
-		"package": map[string]string{"name": name, "ecosystem": ecoName},
+		"package": map[string]string{"name": name, "ecosystem": osvEcosystemName(eco)},
 	})
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.osv.dev/v1/query", bytes.NewReader(body))
 	if err != nil {
@@ -164,4 +172,19 @@ func npmPathEscape(name string) string {
 		return "@" + url.PathEscape(strings.TrimPrefix(name, "@"))
 	}
 	return url.PathEscape(name)
+}
+
+func pypiLatestURL(name string) string {
+	return "https://pypi.org/pypi/" + url.PathEscape(name) + "/json"
+}
+
+func osvEcosystemName(eco model.Ecosystem) string {
+	switch eco {
+	case model.EcosystemGo:
+		return "Go"
+	case model.EcosystemPyPI:
+		return "PyPI"
+	default:
+		return "npm"
+	}
 }

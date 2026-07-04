@@ -1,6 +1,10 @@
 package metadata
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/ZONO33LHD/anneal/domain/model"
+)
 
 func TestEscapeGoModulePath(t *testing.T) {
 	cases := map[string]string{
@@ -11,6 +15,27 @@ func TestEscapeGoModulePath(t *testing.T) {
 	for in, want := range cases {
 		if got := escapeGoModulePath(in); got != want {
 			t.Errorf("escapeGoModulePath(%q)=%q want %q", in, got, want)
+		}
+	}
+}
+
+func TestPyPILatestURL(t *testing.T) {
+	got := pypiLatestURL("django rest framework")
+	want := "https://pypi.org/pypi/django%20rest%20framework/json"
+	if got != want {
+		t.Fatalf("pypiLatestURL=%q want %q", got, want)
+	}
+}
+
+func TestOSVEcosystemName(t *testing.T) {
+	cases := map[model.Ecosystem]string{
+		model.EcosystemNPM:  "npm",
+		model.EcosystemGo:   "Go",
+		model.EcosystemPyPI: "PyPI",
+	}
+	for eco, want := range cases {
+		if got := osvEcosystemName(eco); got != want {
+			t.Fatalf("osvEcosystemName(%q)=%q want %q", eco, got, want)
 		}
 	}
 }
