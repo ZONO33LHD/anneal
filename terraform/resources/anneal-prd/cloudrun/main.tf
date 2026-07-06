@@ -5,6 +5,11 @@ resource "google_cloud_run_v2_service" "anneal" {
   name     = "anneal"
   location = var.region
 
+  # サービスは CI が管理する（状態は Firestore にあり、サービス自体は再作成可能）。
+  # provider 既定の deletion_protection=true だと、失敗 revision の taint 置き換えや
+  # 不変フィールド変更に伴う destroy がブロックされ apply が止まるため false にする。
+  deletion_protection = false
+
   # GitHub からの Webhook を受けるため外部からの到達を許可する。
   # リクエストは serve 側の HMAC-SHA256 署名検証で保護する。
   ingress = "INGRESS_TRAFFIC_ALL"
