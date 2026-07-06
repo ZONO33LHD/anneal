@@ -57,39 +57,19 @@ resource "google_cloud_run_v2_service" "anneal" {
       }
 
       # secret は値を埋め込まず、Secret Manager の最新バージョンを参照する。
-      env {
-        name = "GITHUB_TOKEN"
-        value_source {
-          secret_key_ref {
-            secret  = "GITHUB_TOKEN"
-            version = "latest"
-          }
-        }
-      }
-      env {
-        name = "GITHUB_WEBHOOK_SECRET"
-        value_source {
-          secret_key_ref {
-            secret  = "GITHUB_WEBHOOK_SECRET"
-            version = "latest"
-          }
-        }
-      }
-      env {
-        name = "GEMINI_API_KEY"
-        value_source {
-          secret_key_ref {
-            secret  = "GEMINI_API_KEY"
-            version = "latest"
-          }
-        }
-      }
-      env {
-        name = "SLACK_WEBHOOK_URL"
-        value_source {
-          secret_key_ref {
-            secret  = "SLACK_WEBHOOK_URL"
-            version = "latest"
+      # ただし version（値）が存在しない secret を latest 参照すると Cloud Run の
+      # 起動が "Secret ... not found" で失敗するため、値を投入済みの secret だけを
+      # var.mounted_secrets で mount する（既定は Gemini のみ）。未 mount の機能は
+      # アプリ側が env 空としてモック/コンソールにフォールバックする。
+      dynamic "env" {
+        for_each = toset(var.mounted_secrets)
+        content {
+          name = env.value
+          value_source {
+            secret_key_ref {
+              secret  = env.value
+              version = "latest"
+            }
           }
         }
       }
