@@ -27,3 +27,9 @@ variable "scan_targets" {
   type        = string
   default     = ""
 }
+
+variable "mounted_secrets" {
+  description = "Cloud Run に env として mount する Secret Manager secret 名。値（version）を投入済みのものだけを指定する。version が無い secret を latest 参照すると Cloud Run 起動が失敗するため。既定は Gemini のみ。GitHub/Slack などを使う場合は値を投入してからこの list に追加する（例: [\"GEMINI_API_KEY\", \"GITHUB_TOKEN\", \"GITHUB_WEBHOOK_SECRET\", \"SLACK_WEBHOOK_URL\"]）。"
+  type        = list(string)
+  default     = ["GEMINI_API_KEY"]
+}
