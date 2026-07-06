@@ -23,6 +23,7 @@ variable "internal_oidc_audience" {
 }
 
 variable "scan_targets" {
-  description = "ANNEAL_SCAN_TARGETS に渡す scan 対象。カンマ区切りで /path/to/repo または /path/to/repo=owner/repo。"
+  description = "ANNEAL_SCAN_TARGETS に渡す scan 対象。カンマ区切りで /path/to/repo または /path/to/repo=owner/repo。既定は空（未設定）。CI apply では TF_VAR_scan_targets が未指定でも apply が通るよう default を持たせる。"
   type        = string
+  default     = ""
 }
