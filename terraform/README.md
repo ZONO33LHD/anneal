@@ -18,19 +18,38 @@ Anneal の Terraform は、PR で `plan`、`main` への merge で `apply` し�
 
 ### Secret の値の投入
 
-`secretmanager` モジュールは secret の**箱だけ**を作り、値（version）は Terraform で管理しません（state やコードに秘密を載せないため）。値は運用で手動投入してください。
+`secretmanager` モジュールは secret の**箱だけ**を作り、値（version）は Terraform で管理しません（state やコードに秘密を載せないため）。値の投入方法は 2 通りです。
+
+**A. GitHub Actions で同期（推奨: `GEMINI_API_KEY`）**
+
+GitHub Secrets に `GEMINI_API_KEY` を登録し、`.github/workflows/secret-sync.yml`（`secret-sync`）を手動実行すると、その値を Secret Manager の同名 secret へ反映します。
+
+- トリガー: Actions タブ → `secret-sync` → Run workflow（`workflow_dispatch`）。GitHub Secrets の変更はイベントを発火しないため手動実行。
+- 冪等: 既存の `latest` と一致する場合は version を増やしません（version 増殖と課金を回避）。
+- 反映: `redeploy` 入力（既定 true）が有効かつ新 version を追加した場合、Cloud Run を再デプロイして `latest` を取り込みます（サービス未作成時はスキップ）。
+
+投入手順:
+
+1. `secretmanager` モジュールを apply して箱を作成（初回のみ）。
+2. リポジトリ Settings → Secrets and variables → Actions に `GEMINI_API_KEY` を登録。
+3. `secret-sync` ワークフローを実行。
+
+なお、Terraform 実行用 SA（`GCP_SERVICE_ACCOUNT`）には version の追加・参照権限が必要です（`roles/secretmanager.admin`、または `secretVersionAdder` ＋ `secretAccessor`）。
+
+**B. 手動投入（`gcloud`）**
 
 ```sh
-printf '%s' "$GITHUB_TOKEN" | gcloud secrets versions add GITHUB_TOKEN --data-file=- --project anneal-prd
+printf '%s' "$GEMINI_API_KEY" | gcloud secrets versions add GEMINI_API_KEY --data-file=- --project anneal-500804
 ```
 
 ## GitHub Secrets
 
 Terraform Actions を動かす前に、リポジトリに以下の secrets を設定してください。
 
-- `GCP_PROJECT_ID`: Google Cloud project ID (`anneal-prd`)
+- `GCP_PROJECT_ID`: Google Cloud project ID（実プロジェクトは `anneal-500804`。terraform 変数 `project_id` の既定値も同じ）
 - `GCP_WIF_PROVIDER`: GitHub Actions 用 Workload Identity Provider
 - `GCP_SERVICE_ACCOUNT`: Terraform を実行する service account のメールアドレス
+- `GEMINI_API_KEY`: Gemini API キー（`secret-sync` ワークフローで Secret Manager に同期）。最安ティアの `gemini-2.5-flash-lite` を利用する前提。
 
 PR では secrets が未設定でも `fmt` / `validate` までは実行し、GCP 認証が必要な `plan` はスキップします。`main` merge 後の `apply` ではこれらの secrets が必須です。
 
@@ -39,10 +58,10 @@ PR では secrets が未設定でも `fmt` / `validate` までは実行し、GCP
 Terraform state は GCS backend を使います。初回実行前に bucket を事前作成してください。
 
 ```sh
-gcloud storage buckets create gs://anneal-terraforms --project anneal-prd --location asia-northeast1
+gcloud storage buckets create gs://anneal-terraforms --project anneal-500804 --location asia-northeast1
 ```
 
-各 module の state prefix は module directory から生成します。たとえば `terraform/resources/anneal-prd/api` は `terraform.resources.anneal-prd.api` になります。
+各 module の state prefix は module directory から生成します。たとえば `terraform/resources/anneal-prd/api` は `terraform.resources.anneal-prd.api` になります（`anneal-prd` は directory 名 = 環境ラベルで、GCP プロジェクト ID `anneal-500804` とは別軸です）。
 
 ## Workload Identity Federation
 
