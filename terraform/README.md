@@ -14,7 +14,7 @@ Anneal の Terraform は、PR で `plan`、`main` への merge で `apply` し�
 6. `cloudrun` — Webhook 受け口（`serve`）を動かす Cloud Run サービス。runtime SA を使い、Firestore backend と secret（env 経由）を参照する。GitHub からの Webhook 到達のため公開（`run.invoker` = allUsers）だが、リクエストは serve 側の HMAC 署名検証で保護する
 7. `scheduler` — Cloud Scheduler から `/internal/scan` と `/internal/tick` を OIDC token 付きで定期起動する。`cloudrun` の `scan_targets` 変数で `ANNEAL_SCAN_TARGETS` を渡す
 
-イメージの初回 push（`artifactregistry` への `:latest`）は `cloudrun` の apply より前に必要です（`image-build` ワークフローが供給）。Cloud Run のイメージは `lifecycle.ignore_changes` 対象で、実ロールアウトは deploy ワークフローが `:<sha>` で更新します。GitHub Webhook の送信先は `<service_uri>/webhooks/github`、内部定期起動は `<service_uri>/internal/scan` / `<service_uri>/internal/tick` です。
+`cloudrun` は初回作成時、AR に実イメージが無くても作成できるよう Cloud Run の公開サンプルイメージ（`us-docker.pkg.dev/cloudrun/container/hello`）で作られます。Cloud Run のイメージは `lifecycle.ignore_changes` 対象で、実イメージは `image-build`/deploy ワークフローが AR の `:<sha>` をロールアウトします（apply 後に `image-build` を実行すると実アプリに切り替わります）。GitHub Webhook の送信先は `<service_uri>/webhooks/github`、内部定期起動は `<service_uri>/internal/scan` / `<service_uri>/internal/tick` です。
 
 ### Secret の値の投入
 
