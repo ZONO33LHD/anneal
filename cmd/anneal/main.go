@@ -16,6 +16,7 @@ import (
 
 	"github.com/ZONO33LHD/anneal/domain/config"
 	"github.com/ZONO33LHD/anneal/domain/ctxkey"
+	"github.com/ZONO33LHD/anneal/domain/model"
 	"github.com/ZONO33LHD/anneal/domain/policy"
 	"github.com/ZONO33LHD/anneal/infrastructure/auth"
 	applog "github.com/ZONO33LHD/anneal/infrastructure/log"
@@ -55,6 +56,8 @@ func run(args []string) error {
 		return cmdServe()
 	case "improve":
 		return cmdImprove()
+	case "approve":
+		return cmdApprove(args[1:])
 	case "adopt":
 		return cmdAdopt()
 	case "status":
@@ -79,6 +82,7 @@ Usage:
   anneal reconcile                         Catch up records left behind by missed events
   anneal serve                             Listen for GitHub webhooks over HTTP
   anneal improve                           Run the Annealing Loop score check
+  anneal approve <improvementID>           Approve a candidate so adopt can promote it to canary
   anneal adopt                             Advance A/B adoption (canary → adopt/rollback)
   anneal status                            Print a summary of records and scores
   anneal demo                              Run the full lifecycle on the bundled fixture (all-mock)
@@ -247,8 +251,28 @@ func cmdImprove() error {
 	return reg.Anneal.MaybeAnneal(runContext())
 }
 
-// cmdAdopt は A/B 採用ループを 1 ステップ進める（候補の canary 昇格、または canary の
-// 採用/巻き戻し）。
+// cmdApprove は候補（candidate）を人間承認し approved にする。生成された改善版の
+// プロンプト文言を本番の判断に載せる前の必須ゲート。承認後、次の adopt で canary へ
+// 昇格される。
+func cmdApprove(args []string) error {
+	fs := flag.NewFlagSet("approve", flag.ContinueOnError)
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	id := fs.Arg(0)
+	if id == "" {
+		return fmt.Errorf("usage: anneal approve <improvementID>")
+	}
+	reg, err := newRegistry()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = reg.Close() }()
+	return reg.Adoption.Approve(runContext(), id)
+}
+
+// cmdAdopt は A/B 採用ループを 1 ステップ進める（承認済み候補の canary 昇格、または
+// canary の採用/巻き戻し）。
 func cmdAdopt() error {
 	reg, err := newRegistry()
 	if err != nil {
@@ -337,7 +361,20 @@ func runDemo() error {
 		return err
 	}
 
-	fmt.Println("\n=== 5) A/B adoption (candidate → canary) ===")
+	// 生成された候補を承認する（本番では人間が `anneal approve` を実行する承認ゲート。
+	// デモは all-mock なので自動で通す）。承認しないと candidate は canary へ昇格しない。
+	fmt.Println("\n=== 5) 🙋 Approve candidate (human gate) ===")
+	if imps, err := reg.Improvements.ListImprovements(); err == nil {
+		for _, imp := range imps {
+			if imp.Status == model.ImprovementCandidate {
+				if err := reg.Adoption.Approve(ctx, imp.ImprovementID); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	fmt.Println("\n=== 6) A/B adoption (approved → canary) ===")
 	if err := reg.Adoption.Evaluate(ctx); err != nil {
 		return err
 	}

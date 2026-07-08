@@ -176,6 +176,10 @@ func (f *fakeInternalTaskAdoption) Evaluate(ctx context.Context) error {
 	return nil
 }
 
+func (f *fakeInternalTaskAdoption) Approve(ctx context.Context, improvementID string) error {
+	return nil
+}
+
 type fakeInternalTaskAuthenticator struct {
 	ok bool
 }
