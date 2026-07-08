@@ -92,7 +92,7 @@ func New(cfg *config.Config) (*Registry, error) {
 	_, simulate := gitGW.(*git.Mock)
 	logger.Debug(context.Background(), "providers: llm="+llmGW.ProviderName()+" git="+gitGW.ProviderName()+
 		" notify="+notifier.ProviderName()+" metadata="+meta.ProviderName())
-	prompts := prompt.NewCatalog()
+	prompts := prompt.NewRepoCatalog(improvements)
 	engine := usecase.NewEngineUsecase(updates, evals, improvements, llmGW, prompts, gitGW, notifier, ecosystems, scanner, logger, cfg.LowScoreThreshold, simulate)
 
 	return &Registry{
