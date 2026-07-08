@@ -11,7 +11,11 @@ data "google_service_account" "scheduler" {
 }
 
 locals {
-  # var.image 未指定時は Artifact Registry の :latest を使う。
-  # （artifactregistry モジュールの repository_id=cloudrun, イメージ名=anneal に一致）
-  image = var.image != "" ? var.image : "${var.region}-docker.pkg.dev/${var.project_id}/cloudrun/anneal:latest"
+  # var.image 未指定時は Cloud Run の公開サンプルイメージで「初回作成」する。
+  # 実イメージは image-build/deploy ワークフローが AR の :<sha> をロールアウトし、
+  # image は lifecycle.ignore_changes 対象なので terraform はそれを上書きしない。
+  # これにより AR に anneal:latest がまだ無い greenfield でも Cloud Run サービスを
+  # 作成でき、apply が「Image not found」で失敗しなくなる。
+  # 実イメージを terraform で固定したい場合は var.image を明示指定する。
+  image = var.image != "" ? var.image : "us-docker.pkg.dev/cloudrun/container/hello"
 }

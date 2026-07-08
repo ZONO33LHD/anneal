@@ -2,6 +2,8 @@ name: image-build
 
 # main への push でコンテナイメージをビルドし、Artifact Registry へ push する。
 # Cloud Run はここで push されたイメージ（:latest と :<sha>）を参照する。
+# 初回ブートストラップ（cloudrun apply 前に :latest を用意する）や、Go 変更が無いときの
+# 手動リビルドのため workflow_dispatch でも起動できる。
 on:
   push:
     branches: [main]
@@ -12,6 +14,7 @@ on:
       - 'Dockerfile'
       - '.dockerignore'
       - '.github/workflows/image-build.yml'
+  workflow_dispatch: {}
 
 env:
   REGION: asia-northeast1
