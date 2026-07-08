@@ -83,7 +83,26 @@
 | 4 | カタログに無い版のフォールバック | **A1：既定版 `prompt_v1` にフォールバック**。パイプラインは止めない |
 | 5 | A / C の線引き | **A 単体** = 版差し替えの配線を通し「手書きカタログ版なら効く」まで。ループが自動生成した版が実際に別プロンプトになるのは **C から**。デモの「78.2→84.7」は A の時点でも**手書き `prompt_v2` を 1 本カタログに仕込めば実演可能** |
 
-> ⚠️ **A 単体は生成版に関しては no-op のまま**（未知版は `prompt_v1` にフォールバックするため）。自律的な「使うほど賢くなる」は C（`Appendix = ProposedChange` の適用）で初めて成立する。C 着手時にサニタイズ／承認フローを別途設計する（懸念 #5）。
+> ⚠️ **A 単体は生成版に関しては no-op のまま**（未知版は `prompt_v1` にフォールバックするため）。自律的な「使うほど賢くなる」は C（`Appendix = ProposedChange` の適用）で初めて成立する。
+
+#### C フェーズの設計（dig で確定）
+
+C は「LLM 生成文（`ProposedChange`）を実プロンプトの appendix に載せる」フェーズ。canary 昇格後に新規スキャンが候補版でタグ付けされ（`adoption.promoteToCanary`）、`For(candidateVersion)` が `Base + Appendix` を返すことで生成文が本番の判断プロンプトに載る。安全性を以下で担保する。
+
+| 論点 | 決定 |
+|---|---|
+| 承認ゲート（位置・主体） | **canary 昇格時に人間承認**を必須化。生成・A/B 採点・ロールバックまでは自律、「本番プロンプト投入」だけ人を挟む（NF-003 相当）。完全自律は不採用 |
+| `%` 事故の防止 | appendix は `fmt.Sprintf` の**書式文字列に混ぜず整形後に後置連結**（`fmt.Sprintf(base, args...) + "\n" + appendix`）。`ProposedChange` 内の `%` 誤解釈を構造的にゼロ化。エスケープ方式は不採用 |
+| ポート契約（4a の訂正）| `PromptProvider.For` は `string` でなく **`PromptTemplate{Base, Appendix}` を返す**よう C で変更（4a の「契約不変」はここで訂正）。`Rendered()`（旧結合）は C で未使用/削除。呼び出し側で `fmt.Sprintf(t.Base, args...) + t.Appendix` |
+| appendix データの出どころ | Provider は**改善リポジトリを読む**。`For(version)` が `CandidateVersion==version` の improvement を引き `ProposedChange` を appendix にする。`prompt_v1`=静的定数 / `v2` 以降=improvement 由来を `For` 内 1 分岐で扱う（単一の真実・F-056 の監査と一貫）。事前物質化は YAGNI |
+| 承認の表現・チャネル | 新ステータス **`approved`** を candidate と canary の間に追加（`candidate →(人間)→ approved → canary`）。`promoteToCanary` は `approved` のみ昇格。承認は CLI **`anneal approve <improvement_id>`**（既存 `adopt`/`improve` と同じ手動起動）。Slack は承認待ち通知のみ |
+
+**C フェーズの PR 分割見込み**（実装時に精査）:
+
+| # | 内容 | 依存 |
+|---|---|---|
+| C-1 | `approved` ステータス追加 + `promoteToCanary` の承認ガード + `anneal approve` コマンド | 4b |
+| C-2 | `For` を `PromptTemplate` 返しに変更 + Provider が改善リポジトリを読む + appendix 後置連結の呼び出し側差替 | C-1 |
 
 ---
 
