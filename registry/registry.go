@@ -92,7 +92,8 @@ func New(cfg *config.Config) (*Registry, error) {
 	_, simulate := gitGW.(*git.Mock)
 	logger.Debug(context.Background(), "providers: llm="+llmGW.ProviderName()+" git="+gitGW.ProviderName()+
 		" notify="+notifier.ProviderName()+" metadata="+meta.ProviderName())
-	engine := usecase.NewEngineUsecase(updates, evals, improvements, llmGW, gitGW, notifier, ecosystems, scanner, logger, cfg.LowScoreThreshold, simulate)
+	prompts := prompt.NewCatalog()
+	engine := usecase.NewEngineUsecase(updates, evals, improvements, llmGW, prompts, gitGW, notifier, ecosystems, scanner, logger, cfg.LowScoreThreshold, simulate)
 
 	return &Registry{
 		Scan:         usecase.NewScanUsecase(updates, improvements, meta, ecosystems, repoCfg, notifier, logger),
@@ -102,7 +103,7 @@ func New(cfg *config.Config) (*Registry, error) {
 		Webhook:      usecase.NewWebhookUsecase(updates, engine, logger),
 		Dashboard:    usecase.NewDashboardUsecase(updates, evals, improvements),
 		Logger:       logger,
-		Prompts:      prompt.NewCatalog(),
+		Prompts:      prompts,
 		Updates:      updates,
 		Evaluations:  evals,
 		Improvements: improvements,

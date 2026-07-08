@@ -26,6 +26,7 @@ type engine struct {
 	evals        repository.EvaluationRepository
 	improvements repository.ImprovementRepository
 	llm          gateway.LLM
+	prompts      gateway.PromptProvider
 	git          gateway.Git
 	notifier     gateway.Notifier
 	ecosystems   gateway.EcosystemProvider
@@ -45,6 +46,7 @@ func NewEngineUsecase(
 	evals repository.EvaluationRepository,
 	improvements repository.ImprovementRepository,
 	llm gateway.LLM,
+	prompts gateway.PromptProvider,
 	git gateway.Git,
 	notifier gateway.Notifier,
 	ecosystems gateway.EcosystemProvider,
@@ -53,7 +55,7 @@ func NewEngineUsecase(
 	lowScoreThreshold float64,
 	simulate bool,
 ) EngineUsecase {
-	return &engine{updates, evals, improvements, llm, git, notifier, ecosystems, scanner, log, lowScoreThreshold, simulate}
+	return &engine{updates, evals, improvements, llm, prompts, git, notifier, ecosystems, scanner, log, lowScoreThreshold, simulate}
 }
 
 var scoreStates = map[model.State]bool{
