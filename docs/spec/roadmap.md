@@ -1,4 +1,4 @@
-# Anneal — 残タスク PR ロードマップ（T7〜T10）
+# Anneal — 残タスク PR ロードマップ（T7〜T11）
 
 > 本書は [`requirements.md`](./requirements.md) の「15. MVP スコープ」到達後に残る **将来スコープ**を、レビュワー負担の小さい stacked PR 列に落とし込んだもの。
 > 進捗管理は Git のマイルストーンブランチ `feat/tN-*` で行う（T1〜T6 は実装済み、T4 は欠番）。
@@ -18,12 +18,15 @@
 
 ## 残タスク（要件定義書のトリガー対応）
 
-| 機能 | 内容 | 要件 |
-|---|---|---|
-| T7 | Cloud Scheduler による定期 `scan` / `tick` の自動起動 | T1 / T9 |
-| T8 | Dependabot Alert Webhook による検知トリガー | T2 / F-002 / F-019 |
-| T9 | npm / Go 以外のエコシステム（Python 等）対応 | F-003 |
-| T10 | 採用版に応じたプロンプト本文の動的差替 | F-056 系 |
+| 機能 | 内容 | 要件 | 状態 |
+|---|---|---|---|
+| T7 | 定期 `scan` / `tick` の自動起動（internal endpoint + Cloud Scheduler） | T1 / T9 | ✅ 完了（main マージ済み） |
+| T8 | Dependabot Alert Webhook による検知トリガー | T2 / F-002 / F-019 | ✅ 完了（main マージ済み） |
+| T9 | npm / Go 以外のエコシステム（Python 等）対応 | F-003 | 🧊 凍結（Issue #33・MVP スコープ外） |
+| T10 | 採用版に応じたプロンプト本文の動的差替 | F-056 系 | ✅ 完了（4a/4b/C-1/C-2 マージ済み） |
+| **T11** | **対象 repo 起点 push モデル（GitOps ワークフロー）＋リモート scanner** | NF-012/013・§14 | 🔜 計画（本書下部に詳細） |
+
+> **進捗サマリ**：T7・T8・T10 は main マージ済み。T9 は凍結。以下の T7〜T10 の細分化表は着手前の計画で、T7/T8 は実際には codex が別粒度で実装した。**新規計画は末尾の T11**（対象 repo に置くワークフローから Anneal を起動する push モデル）。
 
 ---
 
@@ -155,3 +158,87 @@ T10: 4a ──▶ 4b
 - `usecase/engine_analysis.go`, `usecase/anneal.go`（プロンプトのハードコード箇所）
 - `domain/model/improvement.go`, `domain/model/version.go`（agent_version の刻印元）
 - `terraform/resources/anneal-prd/cloudrun/main.tf`, `terraform/resources/anneal-prd/api/main.tf`
+
+---
+
+# T11: 対象 repo 起点 push モデル（GitOps ワークフロー）＋リモート scanner
+
+> 運用手順は [how-to/manage-projects.md](../how-to/manage-projects.md) を参照。
+
+## ゴール
+
+「どの GitHub プロジェクトを監視するか・除外・パラメータ」を、**エンジニアが対象 repo にコミットするだけ**で Anneal に管理させる。専用フロントも外部 SaaS も作らない。操作者はエンジニアのみ。
+
+- 監視したい repo に `.github/workflows/anneal.yml` を置くと、その **CI（cron/手動）が Anneal（Cloud Run）の scan エンドポイントを認証付きで叩く**（push モデル）。
+- Anneal 側に中央の監視対象一覧は持たない（**完全オプトイン**）。
+- 除外・パラメータは対象 repo の `.anneal.yml`（既存 `RepoConfig`/`IsIgnored` を流用）。
+
+## 設計判断（dig で確定）
+
+| 論点 | 決定 |
+|---|---|
+| モデル | 対象 repo 起点の **push**（中央 pull＝旧案は破棄）。中央 `config/projects.yml`・`go:embed`・Cloud Scheduler-for-scan は**不要** |
+| 起動 | 対象 repo の `anneal.yml` が `POST /internal/scan {repository:"owner/repo"}` を叩く。認証は既存 token/OIDC を流用 |
+| scan の読み取り | Cloud Run にローカル checkout が無いため **GitHub Contents API でマニフェスト（package.json/go.mod＋lockfile）だけ取得**。clone しない。既存 scanner の `os.ReadFile` を `ManifestSource` ポートへ抽象化（LocalFS 実装で現挙動維持） |
+| 責務分担 | 監視参加＝対象 repo の `anneal.yml`／除外・パラメータ＝対象 repo の `.anneal.yml`／組織デフォルト＝既存 `DefaultRepoConfig` |
+
+## 細分化 PR 一覧（8 本・手動 ~620 行・自動生成なし）
+
+| # | PR タイトル | scope | 規模 | この PR マージ時点の挙動 | 依存 |
+|---|---|---|---|---|---|
+| 1 | `[core]` `ManifestSource` ポート＋LocalFS 実装 | gateway, ecosystem | ~70 | port と LocalFS 追加のみ・既存未使用 | — |
+| 2 | `[core]` Ecosystem を repoPath→ManifestSource 経由へ切替 | gateway, ecosystem, usecase, cmd | ~130 | LocalFS 注入で**挙動不変**・全 caller 統一 | 1 |
+| 3 | `[core]` Contents API 版 ManifestSource | ecosystem/git | ~130 | リモート取得が単体で動作・未配線 | 1 |
+| 4 | `[core]` `.anneal.yml` のリモート Loader | gateway, repoconfig | ~60 | remote でも ignore/override が効く・LocalFS 不変 | 1 |
+| 5 | `[core]` owner/repo 起点の remote scan 経路（`RunRemote`） | usecase | ~90 | remote 1 件を scan し detected 作成可・endpoint 未接続 | 2,3,4 |
+| 6 | `[interface]` `/internal/scan` に per-request `repository` 受け口 | interface/http | ~90 | 認証済みリクエストで自 repo scan 可・env 経路も温存 | 5 |
+| 7 | `[registry]` remote source/loader を DI 配線 | registry | ~50 | 本番 Cloud Run で remote scan 有効 | 3,4,5 |
+| 8 | `[docs]` 対象 repo 用ワークフローテンプレ＋how-to | docs | ~70 | 対象 repo がコピペで push scan 導入可 | 6 |
+
+**stack**: #1 を土台に #2/#3/#4 を並行 → #5 で合流 → #6 →(#7,#8)。既存 env 全件ループ・LocalFS 経路・CLI・認証はすべて温存＝**加算的**（撤退は #4〜#7 revert で完結）。
+
+## 依存グラフ
+
+```
+#1 manifest-source (port+LocalFS)
+ ├─▶ #2 ecosystem 署名切替 ─┐
+ ├─▶ #3 contents source ────┤
+ └─▶ #4 remote repoconfig ──┤
+                            ▼
+                      #5 remote scan (RunRemote)
+                            ▼
+                      #6 endpoint repository 受け口
+                            ├─▶ #7 registry 配線
+                            └─▶ #8 workflow テンプレ+docs
+```
+
+## 懸念点と対策
+
+| # | 懸念点 | 該当 | 影響度 | 対策 |
+|---|---|---|---|---|
+| 1 | Contents 用 GitHub token の private repo 読取権限不足で scan 失敗 | #7 | 🔴高 | `GITHUB_TOKEN` の scope を #7 前に確認、不足なら専用 Secret 追加 |
+| 2 | #2 の `Ecosystem` 署名変更が cmd/usecase/テストに広く波及 | #2 | 🟡中 | 契約 PR として全 caller を 1 PR で更新。300 行超なら NPM/GoMod と provider/usecase に分割 |
+| 3 | 対象 repo CI の認証方式（共有トークン Secret vs GitHub OIDC）未確定 | #8 | 🟡中 | 既存 token/OIDC 両対応を流用。決定までテンプレに両パターン併記 |
+| 4 | Contents API のレート制限・大 lockfile 取得コスト（NF-020 段階実行と衝突） | #3,#5 | 🟡中 | manifest+lockfile のみ取得。dry-run で取得回数を計測 |
+| 5 | cron 依存で取りこぼし（対象 repo が未設置/失敗）＝監視の穴 | 全体 | 🔵低 | 完全オプトイン前提を docs 明記。保険に Anneal 側 reconcile 併用（別トラック） |
+
+## 条件付き +1（PR 本数を左右する未確定要素）
+
+- 認証を OIDC 主体に決定 → 対象 repo 用 Workload Identity 設定 docs/terraform が +1
+- Contents 用 token が private で権限不足 → 専用 Secret/env 追加 PR が #7 から分離して +1
+- Contents API のレート/大 lockfile が段階実行に抵触 → ETag 条件取得キャッシュ +1
+
+## スコープ外（別トラック）
+
+- 監視対象の**一覧化**（完全オプトインの弱点補完＝ダッシュボード/検索）
+- cron 取りこぼしの保険となる Anneal 側 reconcile スケジューラ
+- 旧 pull 版（中央 `config/projects.yml`・`go:embed`・Cloud Scheduler-for-scan）＝**破棄・非対象**
+- GitHub Issue 操作盤／自前フロント／外部 SaaS＝不採用
+
+## トリガーの整理（重要）
+
+T11 が担うのは **①検知（scan）のトリガー**のみ。Anneal 全体は 2 系統で駆動する:
+
+- **① 検知**：対象 repo の CI cron → `/internal/scan`（PR 不要・時間駆動。PR は成果物であって入力ではない）
+- **② 進行と自己改善**：Anneal が作った PR の CI/レビュー/マージ/回帰を **Webhook（`serve`）** で受けてスコア確定→ Annealing Loop。状態機械の進行（`tick`）の駆動は Anneal 側 scheduler / webhook が担う（T11 の対象外）
+
