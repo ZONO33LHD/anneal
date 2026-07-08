@@ -96,7 +96,7 @@ func New(cfg *config.Config) (*Registry, error) {
 	engine := usecase.NewEngineUsecase(updates, evals, improvements, llmGW, prompts, gitGW, notifier, ecosystems, scanner, logger, cfg.LowScoreThreshold, simulate)
 
 	return &Registry{
-		Scan:         usecase.NewScanUsecase(updates, improvements, meta, ecosystems, repoCfg, notifier, logger),
+		Scan:         usecase.NewScanUsecase(updates, improvements, meta, ecosystems, repoCfg, notifier, logger, ecosystem.NewLocalFS),
 		Engine:       engine,
 		Anneal:       usecase.NewAnnealUsecase(evals, improvements, llmGW, notifier, logger, cfg.ImproveWindow, cfg.LowScoreThreshold),
 		Adoption:     usecase.NewAdoptionUsecase(evals, improvements, notifier, logger, policy.MinCanarySample, policy.CanaryRegressionMargin),

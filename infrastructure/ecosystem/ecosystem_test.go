@@ -1,6 +1,7 @@
 package ecosystem_test
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"slices"
@@ -22,7 +23,7 @@ func names(d []gateway.Dependency) []string {
 
 func TestNPMScanAndApply(t *testing.T) {
 	work := testutil.CopyFixture(t, filepath.Join("..", ".."))
-	deps, err := ecosystem.NPM{}.Scan(work)
+	deps, err := ecosystem.NPM{}.Scan(context.Background(), ecosystem.NewLocalFS(work))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,7 +51,7 @@ func TestNPMScanAndApply(t *testing.T) {
 
 func TestGoScanAndApply(t *testing.T) {
 	work := testutil.CopyFixture(t, filepath.Join("..", ".."))
-	deps, err := ecosystem.GoMod{}.Scan(work)
+	deps, err := ecosystem.GoMod{}.Scan(context.Background(), ecosystem.NewLocalFS(work))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +74,10 @@ func TestGoScanAndApply(t *testing.T) {
 
 func TestProviderDetect(t *testing.T) {
 	work := testutil.CopyFixture(t, filepath.Join("..", ".."))
-	found := ecosystem.NewProvider().ForRepo(work)
+	found, err := ecosystem.NewProvider().ForRepo(context.Background(), ecosystem.NewLocalFS(work))
+	if err != nil {
+		t.Fatal(err)
+	}
 	var ids []string
 	for _, e := range found {
 		ids = append(ids, string(e.ID()))

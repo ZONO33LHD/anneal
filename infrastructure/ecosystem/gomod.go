@@ -1,6 +1,7 @@
 package ecosystem
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -17,15 +18,15 @@ func (GoMod) ID() model.Ecosystem {
 	return model.EcosystemGo
 }
 
-func (GoMod) Detect(repoPath string) bool {
-	return fileExists(filepath.Join(repoPath, "go.mod"))
+func (GoMod) Detect(ctx context.Context, src gateway.ManifestSource) (bool, error) {
+	return src.Exists(ctx, "go.mod")
 }
 
 // requireLine は "  module/path v1.2.3  // indirect" にマッチする。
 var requireLine = regexp.MustCompile(`^\s*([^\s]+)\s+(v\d[^\s]*)(\s*//\s*indirect)?\s*$`)
 
-func (GoMod) Scan(repoPath string) ([]gateway.Dependency, error) {
-	data, err := os.ReadFile(filepath.Join(repoPath, "go.mod"))
+func (GoMod) Scan(ctx context.Context, src gateway.ManifestSource) ([]gateway.Dependency, error) {
+	data, err := src.ReadFile(ctx, "go.mod")
 	if err != nil {
 		return nil, err
 	}
