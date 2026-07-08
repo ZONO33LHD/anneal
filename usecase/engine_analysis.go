@@ -23,10 +23,15 @@ func (e *engine) analyzeImpact(ctx context.Context, rec model.DependencyUpdate) 
 	risk := service.DeriveRisk(rec.UpdateType, len(usage), breaking)
 	confidence := service.DeriveConfidence(rec.UpdateType, len(usage))
 
-	prompt := fmt.Sprintf(
-		"[impact] Summarize the impact of bumping %s from %s to %s (%s, %d usage sites, risk=%s).",
+	// 判断プロンプトは版で解決する（採用版があればその文言を使う）。Base は書式文字列、
+	// Appendix は整形後に後置連結する（生成文の % を書式指定子と誤解釈させないため）。
+	tmpl := e.prompts.For(rec.AgentVersion, gateway.PromptImpact)
+	prompt := fmt.Sprintf(tmpl.Base,
 		rec.PackageName, rec.CurrentVersion, rec.TargetVersion, rec.UpdateType, len(usage), risk,
 	)
+	if tmpl.Appendix != "" {
+		prompt += "\n" + tmpl.Appendix
+	}
 	enriched, _ := e.llm.Generate(ctx, gateway.LLMRequest{Prompt: prompt, Temperature: 0.2})
 	base := fmt.Sprintf("%s %s → %s (%s); %d usage site(s); risk %s.",
 		rec.PackageName, rec.CurrentVersion, rec.TargetVersion, rec.UpdateType, len(usage), risk)

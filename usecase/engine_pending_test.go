@@ -61,6 +61,7 @@ func TestEngineWaitsWhenCIPending(t *testing.T) {
 		nil,
 		nil,
 		nil,
+		nil,
 		pendingGit{},
 		nil,
 		nil,
