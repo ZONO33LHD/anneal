@@ -23,6 +23,7 @@ import (
 	"github.com/ZONO33LHD/anneal/infrastructure/notify"
 	"github.com/ZONO33LHD/anneal/infrastructure/persistence"
 	firestorep "github.com/ZONO33LHD/anneal/infrastructure/persistence/firestore"
+	"github.com/ZONO33LHD/anneal/infrastructure/prompt"
 	"github.com/ZONO33LHD/anneal/infrastructure/repoconfig"
 	"github.com/ZONO33LHD/anneal/usecase"
 )
@@ -36,6 +37,10 @@ type Registry struct {
 	Webhook   usecase.WebhookUsecase
 	Dashboard usecase.DashboardUsecase
 	Logger    gateway.Logger
+
+	// Prompts は版で解決するプロンプトカタログ。4b で engine の LLM 呼び出しへ
+	// 配線する（本 PR では構築のみ）。
+	Prompts gateway.PromptProvider
 
 	Updates      repository.UpdateRepository
 	Evaluations  repository.EvaluationRepository
@@ -97,6 +102,7 @@ func New(cfg *config.Config) (*Registry, error) {
 		Webhook:      usecase.NewWebhookUsecase(updates, engine, logger),
 		Dashboard:    usecase.NewDashboardUsecase(updates, evals, improvements),
 		Logger:       logger,
+		Prompts:      prompt.NewCatalog(),
 		Updates:      updates,
 		Evaluations:  evals,
 		Improvements: improvements,
