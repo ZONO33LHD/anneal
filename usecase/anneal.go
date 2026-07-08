@@ -133,11 +133,13 @@ func (a *annealUsecase) run(ctx context.Context, average float64) error {
 	if err := a.improvements.PutImprovement(imp); err != nil {
 		return err
 	}
+	// 承認待ちとして通知する。生成文を本番プロンプトに載せるには人間承認が必須で、
+	// `anneal approve <id>` を実行するまで canary 昇格されない（承認ゲート）。
 	notifyOrLog(ctx, a.notifier, a.log, gateway.NotifyMessage{
-		Level: gateway.NotifySuccess,
-		Title: "🔥 Annealing Loop produced an improvement candidate",
-		Body: fmt.Sprintf("Trigger: %s\nHypothesis: %s\nProposed (%s): %s",
-			imp.Trigger, hypothesis, imp.CandidateVersion, proposed),
+		Level: gateway.NotifyApproval,
+		Title: "🔥 Annealing Loop: 改善候補が承認待ちです",
+		Body: fmt.Sprintf("Trigger: %s\nHypothesis: %s\nProposed (%s): %s\n\n承認するには: anneal approve %s",
+			imp.Trigger, hypothesis, imp.CandidateVersion, proposed, imp.ImprovementID),
 	})
 	a.log.Step(ctx, "annealing: candidate generated", "improvement_id", imp.ImprovementID)
 	return nil

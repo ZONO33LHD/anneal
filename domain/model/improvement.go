@@ -1,12 +1,15 @@
 package model
 
 // ImprovementStatus は改善候補のライフサイクルである。
-// candidate（生成）→ canary（実運用で試用中）→ adopted（採用確定）または
-// rolled_back（劣化により巻き戻し）と遷移する。
+// candidate（生成）→ approved（人間承認）→ canary（実運用で試用中）→
+// adopted（採用確定）または rolled_back（劣化により巻き戻し）と遷移する。
+// approved を挟むのは、LLM 生成文を本番の判断プロンプトに載せる前に人間の承認を
+// 必須にするため（生成文が実プロンプトに載り始めるのは canary から）。
 type ImprovementStatus string
 
 const (
 	ImprovementCandidate  ImprovementStatus = "candidate"
+	ImprovementApproved   ImprovementStatus = "approved"
 	ImprovementCanary     ImprovementStatus = "canary"
 	ImprovementAdopted    ImprovementStatus = "adopted"
 	ImprovementRolledBack ImprovementStatus = "rolled_back"

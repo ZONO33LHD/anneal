@@ -52,17 +52,18 @@ func onlyImprovement(t *testing.T, db *persistence.DB) model.AgentImprovement {
 	return imps[0]
 }
 
-func TestAdoptionPromotesCandidateToCanary(t *testing.T) {
+func TestAdoptionPromotesApprovedToCanary(t *testing.T) {
 	uc, db := newAdoptionUsecase(t)
 	// 現行版 prompt_v1 のベースライン実績。
 	putFinalEval(t, db, "a", "prompt_v1", 80)
 	putFinalEval(t, db, "b", "prompt_v1", 70)
+	// 人間承認済み（approved）の候補だけが canary に昇格できる。
 	putImprovement(t, db, model.AgentImprovement{
 		ImprovementID:    "imp1",
 		Seq:              model.NextSeq(),
 		PreviousVersion:  "prompt_v1",
 		CandidateVersion: "prompt_v2",
-		Status:           model.ImprovementCandidate,
+		Status:           model.ImprovementApproved,
 	})
 
 	if err := uc.Evaluate(context.Background()); err != nil {
@@ -75,6 +76,54 @@ func TestAdoptionPromotesCandidateToCanary(t *testing.T) {
 	}
 	if got.BaselineScore != 75 {
 		t.Errorf("baseline=%v, want 75", got.BaselineScore)
+	}
+}
+
+// 承認ゲートの核心: 未承認の candidate は canary へ昇格しない。これが崩れると LLM 生成文が
+// 人間の承認なしに本番の判断プロンプトへ載ってしまう。
+func TestAdoptionDoesNotPromoteUnapprovedCandidate(t *testing.T) {
+	uc, db := newAdoptionUsecase(t)
+	putImprovement(t, db, model.AgentImprovement{
+		ImprovementID:    "imp1",
+		Seq:              model.NextSeq(),
+		PreviousVersion:  "prompt_v1",
+		CandidateVersion: "prompt_v2",
+		Status:           model.ImprovementCandidate,
+	})
+
+	if err := uc.Evaluate(context.Background()); err != nil {
+		t.Fatalf("Evaluate: %v", err)
+	}
+
+	if got := onlyImprovement(t, db); got.Status != model.ImprovementCandidate {
+		t.Fatalf("status=%s, want candidate (gate must hold)", got.Status)
+	}
+}
+
+// Approve は candidate を approved に昇格させ、以降 Evaluate が canary へ進められる。
+func TestAdoptionApproveMovesCandidateToApproved(t *testing.T) {
+	uc, db := newAdoptionUsecase(t)
+	putImprovement(t, db, model.AgentImprovement{
+		ImprovementID:    "imp1",
+		Seq:              model.NextSeq(),
+		PreviousVersion:  "prompt_v1",
+		CandidateVersion: "prompt_v2",
+		Status:           model.ImprovementCandidate,
+	})
+
+	if err := uc.Approve(context.Background(), "imp1"); err != nil {
+		t.Fatalf("Approve: %v", err)
+	}
+	if got := onlyImprovement(t, db); got.Status != model.ImprovementApproved {
+		t.Fatalf("status=%s, want approved", got.Status)
+	}
+}
+
+// 存在しない ID の承認はエラーにする（誤操作を握りつぶさない）。
+func TestAdoptionApproveUnknownIDErrors(t *testing.T) {
+	uc, _ := newAdoptionUsecase(t)
+	if err := uc.Approve(context.Background(), "nope"); err == nil {
+		t.Fatal("Approve of unknown id should error")
 	}
 }
 

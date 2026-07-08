@@ -16,6 +16,9 @@ import (
 // いずれか 1 ステップを進める。状態機械と同じく「1 呼び出し 1 ステップ」の規律に従う。
 type AdoptionUsecase interface {
 	Evaluate(ctx context.Context) error
+	// Approve は candidate を approved に昇格させる（人間承認ゲート）。approved に
+	// なって初めて Evaluate が canary へ昇格でき、生成文が本番プロンプトに載る。
+	Approve(ctx context.Context, improvementID string) error
 }
 
 type adoptionUsecase struct {
@@ -61,11 +64,45 @@ func (a *adoptionUsecase) Evaluate(ctx context.Context) error {
 	if canary, ok := latestByStatus(improvements, model.ImprovementCanary); ok {
 		return a.judgeCanary(ctx, canary, evals)
 	}
-	// canary が無ければ、最新の candidate を canary に昇格する。
-	if candidate, ok := latestByStatus(improvements, model.ImprovementCandidate); ok {
-		return a.promoteToCanary(ctx, candidate, improvements, evals)
+	// canary が無ければ、承認済み（approved）を canary に昇格する。candidate のままの
+	// ものは人間承認待ちであり、ここでは昇格しない（承認ゲート）。
+	if approved, ok := latestByStatus(improvements, model.ImprovementApproved); ok {
+		return a.promoteToCanary(ctx, approved, improvements, evals)
 	}
 	return nil
+}
+
+// Approve は candidate を approved に昇格させる。存在しない ID や、candidate 以外の
+// 状態の改善を承認しようとした場合はエラーにする（誤操作を握りつぶさない）。
+func (a *adoptionUsecase) Approve(ctx context.Context, improvementID string) error {
+	improvements, err := a.improvements.ListImprovements()
+	if err != nil {
+		return err
+	}
+	for _, imp := range improvements {
+		if imp.ImprovementID != improvementID {
+			continue
+		}
+		if imp.Status != model.ImprovementCandidate {
+			return fmt.Errorf("improvement %s is %s, only candidate can be approved", improvementID, imp.Status)
+		}
+		next := imp
+		next.Status = model.ImprovementApproved
+		if err := a.improvements.PutImprovement(next); err != nil {
+			return err
+		}
+		a.log.Step(ctx, "adoption: candidate approved",
+			"improvement_id", next.ImprovementID,
+			"candidate_version", next.CandidateVersion,
+		)
+		notifyOrLog(ctx, a.notifier, a.log, gateway.NotifyMessage{
+			Level: gateway.NotifyInfo,
+			Title: "✅ Annealing: 改善版を承認しました",
+			Body:  fmt.Sprintf("version=%s は次の adopt で canary 昇格されます", next.CandidateVersion),
+		})
+		return nil
+	}
+	return fmt.Errorf("improvement %s not found", improvementID)
 }
 
 // promoteToCanary は candidate を canary にし、昇格時点の現行版平均をベースラインとして
