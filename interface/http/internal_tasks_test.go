@@ -72,6 +72,35 @@ func TestInternalTaskHandlerRunsScanTargets(t *testing.T) {
 	}
 }
 
+// push モデル: ボディで repository を渡すと、その 1 件を RunRemote でスキャンし、
+// env の ScanTargets には触れない。
+func TestInternalTaskHandlerScansRequestedRepository(t *testing.T) {
+	scan := &fakeInternalTaskScan{results: []usecase.ScanResult{
+		{Created: []model.DependencyUpdate{{UpdateKey: "one"}}, Skipped: 2},
+	}}
+	handler := NewInternalTaskHandler(InternalTaskOptions{
+		Token:  "internal-secret",
+		Scan:   scan,
+		Logger: noopLogger{},
+	})
+	req := httptest.NewRequest(http.MethodPost, "/internal/scan",
+		strings.NewReader(`{"repository":"acme/web"}`))
+	req.Header.Set(internalTokenHeader, "internal-secret")
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d, want 200", rec.Code)
+	}
+	if scan.calls != 1 || scan.args[0] != "remote=acme/web" {
+		t.Fatalf("expected one RunRemote(acme/web), got calls=%d args=%v", scan.calls, scan.args)
+	}
+	if !strings.Contains(rec.Body.String(), "repository=acme/web created=1 skipped=2") {
+		t.Fatalf("body=%q", rec.Body.String())
+	}
+}
+
 func TestInternalTaskHandlerRejectsInvalidToken(t *testing.T) {
 	engine := &fakeInternalTaskEngine{}
 	handler := NewInternalTaskHandler(InternalTaskOptions{

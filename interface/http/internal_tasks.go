@@ -3,9 +3,13 @@ package httpinterface
 import (
 	"context"
 	"crypto/subtle"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/ZONO33LHD/anneal/domain/config"
 	"github.com/ZONO33LHD/anneal/domain/gateway"
@@ -93,8 +97,23 @@ func (h *internalTaskHandler) authorized(r *http.Request) bool {
 }
 
 func (h *internalTaskHandler) runScan(r *http.Request) (string, error) {
+	// push モデル: リクエストボディで owner/repo が指定されていれば、その 1 件を
+	// リモート（Contents API）でスキャンする。対象 repo の CI（GitHub Actions）が
+	// 自 repo を渡して起動する経路。
+	repo := requestedRepository(r)
+	if repo != "" {
+		res, err := h.opts.Scan.RunRemote(r.Context(), repo)
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("scan complete repository=%s created=%d skipped=%d",
+			repo, len(res.Created), res.Skipped), nil
+	}
+
+	// フォールバック: repository 未指定なら env の ScanTargets を全件スキャン（demo /
+	// 後方互換）。両方無ければ、何をスキャンすべきか不明なのでエラーにする。
 	if len(h.opts.ScanTargets) == 0 {
-		return "", errors.New("ANNEAL_SCAN_TARGETS is required for internal scan")
+		return "", errors.New("scan requires a repository in the request body or ANNEAL_SCAN_TARGETS")
 	}
 	created, skipped := 0, 0
 	for _, target := range h.opts.ScanTargets {
@@ -108,6 +127,25 @@ func (h *internalTaskHandler) runScan(r *http.Request) (string, error) {
 	return "scan complete targets=" + strconv.Itoa(len(h.opts.ScanTargets)) +
 		" created=" + strconv.Itoa(created) +
 		" skipped=" + strconv.Itoa(skipped), nil
+}
+
+// requestedRepository はリクエストボディ {"repository":"owner/repo"} を読む。
+// ボディが空/不正でも空文字を返し、env フォールバックへ委ねる（起動失敗にしない）。
+func requestedRepository(r *http.Request) string {
+	if r.Body == nil {
+		return ""
+	}
+	body, err := io.ReadAll(io.LimitReader(r.Body, 4<<10))
+	if err != nil || len(body) == 0 {
+		return ""
+	}
+	var payload struct {
+		Repository string `json:"repository"`
+	}
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return ""
+	}
+	return strings.TrimSpace(payload.Repository)
 }
 
 func (h *internalTaskHandler) runTick(r *http.Request) (string, error) {
