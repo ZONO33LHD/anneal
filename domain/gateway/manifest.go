@@ -17,3 +17,8 @@ type ManifestSource interface {
 	// ReadFile は相対パスのファイル内容を返す。
 	ReadFile(ctx context.Context, relPath string) ([]byte, error)
 }
+
+// ManifestSourceFactory は repo の識別子（ローカルパス、または owner/repo）から
+// ManifestSource を生成する。usecase 層が具体実装（LocalFS / Contents API）を
+// 知らずに済むよう、registry が実体を注入する。
+type ManifestSourceFactory func(repoRef string) ManifestSource
