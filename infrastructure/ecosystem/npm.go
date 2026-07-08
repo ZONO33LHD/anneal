@@ -3,6 +3,7 @@
 package ecosystem
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -21,8 +22,8 @@ func (NPM) ID() model.Ecosystem {
 	return model.EcosystemNPM
 }
 
-func (NPM) Detect(repoPath string) bool {
-	return fileExists(filepath.Join(repoPath, "package.json"))
+func (NPM) Detect(ctx context.Context, src gateway.ManifestSource) (bool, error) {
+	return src.Exists(ctx, "package.json")
 }
 
 type packageJSON struct {
@@ -30,8 +31,8 @@ type packageJSON struct {
 	DevDependencies map[string]string `json:"devDependencies"`
 }
 
-func (NPM) Scan(repoPath string) ([]gateway.Dependency, error) {
-	data, err := os.ReadFile(filepath.Join(repoPath, "package.json"))
+func (NPM) Scan(ctx context.Context, src gateway.ManifestSource) ([]gateway.Dependency, error) {
+	data, err := src.ReadFile(ctx, "package.json")
 	if err != nil {
 		return nil, err
 	}

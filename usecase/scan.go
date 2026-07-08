@@ -34,6 +34,9 @@ type scanUsecase struct {
 	repoConfig   gateway.RepoConfigLoader
 	notifier     gateway.Notifier
 	log          gateway.Logger
+	// newSource は repoPath から ManifestSource を作る。registry が LocalFS を注入する
+	// （usecase 層が具体実装を知らずに済ませ、後続 PR で Contents API へ差し替え可能に）。
+	newSource gateway.ManifestSourceFactory
 }
 
 // NewScanUsecase は scan ユースケースを組み立てる。
@@ -45,8 +48,9 @@ func NewScanUsecase(
 	repoConfig gateway.RepoConfigLoader,
 	notifier gateway.Notifier,
 	log gateway.Logger,
+	newSource gateway.ManifestSourceFactory,
 ) ScanUsecase {
-	return &scanUsecase{updates, improvements, metadata, ecosystems, repoConfig, notifier, log}
+	return &scanUsecase{updates, improvements, metadata, ecosystems, repoConfig, notifier, log, newSource}
 }
 
 // activeVersion は現在有効なエージェント版を返す。採用済み/試用中の改善があれば
@@ -67,7 +71,11 @@ func (s *scanUsecase) Run(ctx context.Context, repoArg, repoName string) (ScanRe
 		repoName = deriveRepoName(repoPath)
 	}
 	cfg := s.repoConfig.Load(repoPath)
-	ecos := s.ecosystems.ForRepo(repoPath)
+	src := s.newSource(repoPath)
+	ecos, err := s.ecosystems.ForRepo(ctx, src)
+	if err != nil {
+		return ScanResult{}, err
+	}
 	if len(ecos) == 0 {
 		s.log.Warn(ctx, "no supported manifest found", "repo", repoPath)
 		return ScanResult{}, nil
@@ -75,7 +83,7 @@ func (s *scanUsecase) Run(ctx context.Context, repoArg, repoName string) (ScanRe
 
 	var res ScanResult
 	for _, eco := range ecos {
-		deps, err := eco.Scan(repoPath)
+		deps, err := eco.Scan(ctx, src)
 		if err != nil {
 			return res, err
 		}
