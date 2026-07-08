@@ -1,0 +1,107 @@
+name: run-anneal
+
+# Cloud Run 上の anneal の内部 endpoint を手動で叩き、実装したパイプラインを実行する。
+# - /internal/tick : 状態機械を1step進め、必要なら anneal(LLM/Gemini)・adoption 評価を回す
+# - /internal/scan : ANNEAL_SCAN_TARGETS の各リポジトリを scan して更新候補を作る
+#
+# 認証: 内部 endpoint は OIDC のみ（app 側で audience=anneal-scheduler かつ
+# email=scheduler SA を要求）。CI 実行 SA(terraform-ci) が scheduler SA を
+# impersonate して ID トークンを発行する（iam モジュールで tokenCreator 付与済み）。
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: "実行するタスク"
+        type: choice
+        options:
+          - tick
+          - scan
+          - both
+        default: tick
+
+concurrency:
+  group: run-anneal
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  REGION: asia-northeast1
+  SERVICE: anneal
+  # 内部 endpoint の OIDC audience（cloudrun の ANNEAL_INTERNAL_OIDC_AUDIENCE と一致）。
+  AUDIENCE: anneal-scheduler
+
+jobs:
+  run:
+    name: Invoke anneal internal endpoint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Check GCP auth config
+        env:
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          GCP_WIF_PROVIDER: ${{ secrets.GCP_WIF_PROVIDER }}
+          GCP_SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$GCP_PROJECT_ID" ] || [ -z "$GCP_WIF_PROVIDER" ] || [ -z "$GCP_SERVICE_ACCOUNT" ]; then
+            echo "::error::GCP auth secrets (GCP_PROJECT_ID / GCP_WIF_PROVIDER / GCP_SERVICE_ACCOUNT) are required."
+            exit 1
+          fi
+
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+          audience: https://github.com/${{ github.repository }}
+
+      - name: Invoke internal endpoint(s)
+        env:
+          PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          TASK: ${{ inputs.task }}
+        run: |
+          set -euo pipefail
+
+          SCHEDULER_SA="anneal-scheduler@${PROJECT_ID}.iam.gserviceaccount.com"
+
+          # Cloud Run サービスの URL を取得。
+          URL="$(gcloud run services describe "$SERVICE" --region "$REGION" --project "$PROJECT_ID" --format='value(status.url)')"
+          if [ -z "$URL" ]; then
+            echo "::error::Cloud Run service ${SERVICE} not found or has no URL. Deploy it first (terraform apply + image-build)."
+            exit 1
+          fi
+          echo "Service URL: $URL"
+
+          # scheduler SA を impersonate して OIDC ID トークンを発行する
+          # （audience=anneal-scheduler, email クレーム付き）。
+          TOKEN="$(gcloud auth print-identity-token \
+            --impersonate-service-account="$SCHEDULER_SA" \
+            --audiences="$AUDIENCE" \
+            --include-email)"
+
+          # 指定タスクに応じて叩く endpoint を決める。
+          case "$TASK" in
+            tick) paths="/internal/tick" ;;
+            scan) paths="/internal/scan" ;;
+            both) paths="/internal/scan /internal/tick" ;;
+            *) echo "::error::unknown task: $TASK"; exit 1 ;;
+          esac
+
+          rc=0
+          for p in $paths; do
+            echo "== POST ${URL}${p} =="
+            code="$(curl -sS -o /tmp/resp.txt -w '%{http_code}' \
+              -X POST -H "Authorization: Bearer ${TOKEN}" "${URL}${p}" || true)"
+            echo "HTTP ${code}"
+            echo "--- response ---"
+            cat /tmp/resp.txt || true
+            echo
+            if [ "$code" != "200" ]; then
+              echo "::error::${p} returned HTTP ${code}"
+              rc=1
+            fi
+          done
+          exit $rc

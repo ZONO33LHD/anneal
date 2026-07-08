@@ -25,3 +25,13 @@ resource "google_project_iam_member" "runtime" {
   role    = each.value
   member  = "serviceAccount:${google_service_account.runtime.email}"
 }
+
+# GitHub Actions（CI 実行 SA）が scheduler SA を impersonate して、内部 endpoint
+# (/internal/scan・/internal/tick) を叩くための OIDC ID トークン（audience=
+# anneal-scheduler, email=scheduler SA）を発行できるようにする。run-anneal
+# ワークフローが手動起動でこれを使う。
+resource "google_service_account_iam_member" "ci_impersonate_scheduler" {
+  service_account_id = google_service_account.scheduler.name
+  role               = "roles/iam.serviceAccountTokenCreator"
+  member             = "serviceAccount:${var.ci_service_account}"
+}
