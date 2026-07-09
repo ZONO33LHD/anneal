@@ -1,6 +1,10 @@
 package gateway
 
-import "github.com/ZONO33LHD/anneal/domain/model"
+import (
+	"context"
+
+	"github.com/ZONO33LHD/anneal/domain/model"
+)
 
 // Dependency はマニフェストから検出された依存関係を表す。
 type Dependency struct {
@@ -11,16 +15,19 @@ type Dependency struct {
 }
 
 // Ecosystem はマニフェストの読み取りと、それへのバージョン更新の適用方法を知る。
+// マニフェストの読み取り（Detect/Scan）は ManifestSource 経由で行い、ローカル FS と
+// GitHub Contents API を差し替え可能にする。ApplyUpdate（書き込み）は実モードでは
+// GitHub Git Data API 側が担うため、ここではローカルパスのまま据え置く。
 type Ecosystem interface {
 	ID() model.Ecosystem
-	Detect(repoPath string) bool
-	Scan(repoPath string) ([]Dependency, error)
+	Detect(ctx context.Context, src ManifestSource) (bool, error)
+	Scan(ctx context.Context, src ManifestSource) ([]Dependency, error)
 	ApplyUpdate(repoPath, name, target string) ([]string, error)
 }
 
 // EcosystemProvider はリポジトリに該当するエコシステムを発見する。
 type EcosystemProvider interface {
-	ForRepo(repoPath string) []Ecosystem
+	ForRepo(ctx context.Context, src ManifestSource) ([]Ecosystem, error)
 	ByID(id model.Ecosystem) Ecosystem
 }
 
