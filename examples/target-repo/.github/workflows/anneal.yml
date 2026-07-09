@@ -1,0 +1,41 @@
+# Anneal — 対象リポジトリ用トリガーワークフロー（テンプレート）
+#
+# このファイルを「Anneal に依存更新を任せたいリポジトリ」の
+# .github/workflows/anneal.yml としてコピーする。cron（と手動）で Anneal の
+# Cloud Run エンドポイントを叩き、この repo をスキャンさせる（push モデル）。
+#
+# 前提（リポジトリ設定）:
+#   - Variable  ANNEAL_URL   : Anneal の Cloud Run URL（例 https://anneal-xxxx.a.run.app）
+#   - Secret    ANNEAL_TOKEN : 内部エンドポイントの共有トークン（Anneal 側 ANNEAL_INTERNAL_TOKEN と一致）
+#
+# 認証は共有トークン方式（最小構成）。GitHub OIDC を使いたい場合は末尾の注記を参照。
+name: anneal
+on:
+  schedule:
+    - cron: "0 3 * * *"   # 毎日 03:00 UTC に依存をスキャン
+  workflow_dispatch: {}    # 手動実行も可
+permissions:
+  contents: read
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Anneal scan for this repository
+        env:
+          ANNEAL_URL: ${{ vars.ANNEAL_URL }}
+          ANNEAL_TOKEN: ${{ secrets.ANNEAL_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${ANNEAL_URL:-}" ] || [ -z "${ANNEAL_TOKEN:-}" ]; then
+            echo "ANNEAL_URL (variable) と ANNEAL_TOKEN (secret) を設定してください" >&2
+            exit 1
+          fi
+          curl -sS --fail-with-body -X POST "${ANNEAL_URL%/}/internal/scan" \
+            -H "X-Anneal-Internal-Token: ${ANNEAL_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "{\"repository\": \"${{ github.repository }}\"}"
+
+# --- GitHub OIDC を使う場合（共有トークンを配りたくないとき）---
+# 上の env/-H の代わりに、google-github-actions/auth で ID トークンを取得し
+# Authorization: Bearer <token> を付ける。Anneal 側は ANNEAL_INTERNAL_OIDC_AUDIENCE /
+# ANNEAL_INTERNAL_OIDC_EMAIL で検証する（interface/http/internal_tasks.go）。
