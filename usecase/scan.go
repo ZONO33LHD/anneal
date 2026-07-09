@@ -80,7 +80,13 @@ func (s *scanUsecase) Run(ctx context.Context, repoArg, repoName string) (ScanRe
 	if repoName == "" {
 		repoName = deriveRepoName(repoPath)
 	}
-	cfg := s.repoConfig.Load(repoPath)
+	cfg, err := s.repoConfig.Load(repoPath)
+	if err != nil {
+		// 壊れた/読めない .anneal.yml は黙って既定に落とさずエラーにする。失敗地点で
+		// どの repo かの文脈付きで slog に残す（境界での記録だけだと原因追跡が弱い）。
+		s.log.Error(ctx, "repo config load failed", err, "repo", repoName)
+		return ScanResult{}, err
+	}
 	src := s.newSource(repoPath)
 	return s.scanWith(ctx, cfg, repoName, repoPath, src)
 }
@@ -92,7 +98,11 @@ func (s *scanUsecase) RunRemote(ctx context.Context, repoRef string) (ScanResult
 	if repoRef == "" {
 		return ScanResult{}, fmt.Errorf("scan: repository (owner/repo) is required")
 	}
-	cfg := s.remoteConfig.Load(repoRef)
+	cfg, err := s.remoteConfig.Load(repoRef)
+	if err != nil {
+		s.log.Error(ctx, "remote repo config load failed", err, "repo", repoRef)
+		return ScanResult{}, err
+	}
 	src := s.remoteSource(repoRef)
 	return s.scanWith(ctx, cfg, repoRef, "", src)
 }

@@ -2,6 +2,7 @@ package repoconfig
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/ZONO33LHD/anneal/domain/gateway"
 	"github.com/ZONO33LHD/anneal/domain/model"
@@ -23,16 +24,19 @@ func NewRemoteLoader(newSource gateway.ManifestSourceFactory) gateway.RepoConfig
 // Load は repoRef（owner/repo）の .anneal.yml を取得する。存在しない／取得失敗時は
 // デフォルトへフォールバックする（ローカル Loader と同じ緩さ）。RepoConfigLoader の
 // 契約に ctx が無いため context.Background を用いる。
-func (r RemoteLoader) Load(repoRef string) model.RepoConfig {
+func (r RemoteLoader) Load(repoRef string) (model.RepoConfig, error) {
 	ctx := context.Background()
 	src := r.newSource(repoRef)
 	ok, err := src.Exists(ctx, ".anneal.yml")
-	if err != nil || !ok {
-		return model.DefaultRepoConfig()
+	if err != nil {
+		return model.RepoConfig{}, fmt.Errorf("repoconfig: check remote .anneal.yml for %s: %w", repoRef, err)
+	}
+	if !ok {
+		return model.DefaultRepoConfig(), nil
 	}
 	data, err := src.ReadFile(ctx, ".anneal.yml")
 	if err != nil {
-		return model.DefaultRepoConfig()
+		return model.RepoConfig{}, fmt.Errorf("repoconfig: read remote .anneal.yml for %s: %w", repoRef, err)
 	}
 	return parseRepoConfig(data)
 }
