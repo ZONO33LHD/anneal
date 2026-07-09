@@ -80,7 +80,10 @@ func (s *scanUsecase) Run(ctx context.Context, repoArg, repoName string) (ScanRe
 	if repoName == "" {
 		repoName = deriveRepoName(repoPath)
 	}
-	cfg := s.repoConfig.Load(repoPath)
+	cfg, err := s.repoConfig.Load(repoPath)
+	if err != nil {
+		return ScanResult{}, err
+	}
 	src := s.newSource(repoPath)
 	return s.scanWith(ctx, cfg, repoName, repoPath, src)
 }
@@ -92,7 +95,10 @@ func (s *scanUsecase) RunRemote(ctx context.Context, repoRef string) (ScanResult
 	if repoRef == "" {
 		return ScanResult{}, fmt.Errorf("scan: repository (owner/repo) is required")
 	}
-	cfg := s.remoteConfig.Load(repoRef)
+	cfg, err := s.remoteConfig.Load(repoRef)
+	if err != nil {
+		return ScanResult{}, err
+	}
 	src := s.remoteSource(repoRef)
 	return s.scanWith(ctx, cfg, repoRef, "", src)
 }

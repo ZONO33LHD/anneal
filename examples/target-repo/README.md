@@ -13,7 +13,9 @@ Anneal に依存更新を任せたいリポジトリへ、このディレクト�
      `ANNEAL_INTERNAL_TOKEN` と同じ値）
 3. （任意）除外パッケージや更新パラメータを変えたい場合は、対象リポジトリのルートに
    `.anneal.yml` を置く（`ignore` / `auto_pr_types` / `regression_window_days` /
-   `base_branch`）。無ければ組織デフォルトが適用される。
+   `base_branch`）。**無ければ**組み込みの既定ポリシー（patch/minor 自動 PR・除外なし・
+   main 向け・7 日監視）が適用される。**あるが壊れている / 取得に失敗した場合は
+   エラーで停止**する（意図した除外や設定を黙って既定へ落とさないため）。
 4. PR → merge。以降、ワークフローの cron（または手動実行）ごとに Anneal がこの repo を
    スキャンし、更新候補があれば PR を作る。
 

@@ -30,24 +30,39 @@ func loaderWith(src gateway.ManifestSource) gateway.RepoConfigLoader {
 // 除外/上書きが効くことが T11 の要）。
 func TestRemoteLoader_ParsesRemoteAnnealYml(t *testing.T) {
 	src := fakeSource{exists: true, data: []byte("ignore:\n  - react\n")}
-	cfg := loaderWith(src).Load("acme/web")
+	cfg, err := loaderWith(src).Load("acme/web")
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
 	if !slices.Contains(cfg.Ignore, "react") {
 		t.Fatalf("ignore=%v want to contain react", cfg.Ignore)
 	}
 }
 
-// .anneal.yml が無ければデフォルトへフォールバック（ローカル Loader と同じ緩さ）。
+// .anneal.yml が無ければ組み込み既定へフォールバック（error なし）。
 func TestRemoteLoader_MissingFallsBackToDefault(t *testing.T) {
-	cfg := loaderWith(fakeSource{exists: false}).Load("acme/web")
+	cfg, err := loaderWith(fakeSource{exists: false}).Load("acme/web")
+	if err != nil {
+		t.Fatalf("missing .anneal.yml should not error: %v", err)
+	}
 	if cfg.BaseBranch != model.DefaultRepoConfig().BaseBranch {
 		t.Fatalf("got %+v want default", cfg)
 	}
 }
 
-// 取得失敗（Exists error）も「更新なし」ではなくデフォルトで継続する。
-func TestRemoteLoader_ExistsErrorFallsBackToDefault(t *testing.T) {
-	cfg := loaderWith(fakeSource{existsErr: errors.New("network")}).Load("acme/web")
-	if len(cfg.Ignore) != 0 {
-		t.Fatalf("ignore=%v want empty default", cfg.Ignore)
+// 取得失敗（Exists error）は error にする。一時的な失敗を「ポリシー無し」と取り違え、
+// 意図しない既定で scan してしまうのを防ぐ。
+func TestRemoteLoader_ExistsErrorReturnsError(t *testing.T) {
+	if _, err := loaderWith(fakeSource{existsErr: errors.New("network")}).Load("acme/web"); err == nil {
+		t.Fatal("fetch error should propagate, not fall back to default")
+	}
+}
+
+// 壊れた .anneal.yml は error にする。除外や設定を黙って既定へ落とし、ユーザーの
+// 意図（例: ignore リスト）を握りつぶすのを防ぐ。
+func TestRemoteLoader_MalformedYmlReturnsError(t *testing.T) {
+	src := fakeSource{exists: true, data: []byte("ignore: [react\n  broken: :")}
+	if _, err := loaderWith(src).Load("acme/web"); err == nil {
+		t.Fatal("malformed .anneal.yml should error, not fall back to default")
 	}
 }
