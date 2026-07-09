@@ -3,7 +3,8 @@ package model
 import "strings"
 
 // RepoConfig は .anneal.yml としてコミットされるリポジトリごとのポリシーである。
-// リポジトリの設定は DefaultRepoConfig が表す組織のデフォルトを上書きする。
+// 設定の単位はリポジトリ単位で、各 repo の .anneal.yml が
+// DefaultRepoConfig（Anneal 組み込みの全 repo 共通の既定）を項目単位で上書きする。
 type RepoConfig struct {
 	BaseBranch           string   `yaml:"base_branch"`
 	Ignore               []string `yaml:"ignore"`
@@ -11,7 +12,9 @@ type RepoConfig struct {
 	RegressionWindowDays int      `yaml:"regression_window_days"`
 }
 
-// DefaultRepoConfig は組織のデフォルト設定を返す。
+// DefaultRepoConfig は Anneal 組み込みの既定ポリシー（全 repo 共通）を返す。
+// .anneal.yml を持たない repo に適用される。組織単位で切り替え可能な既定を持つ仕組みは
+// 現状なく（要件 §14 の DB 既定は将来構想）、これはコード定数である。
 func DefaultRepoConfig() RepoConfig {
 	return RepoConfig{
 		BaseBranch:           "main",
