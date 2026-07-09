@@ -219,6 +219,76 @@ func TestGitHubCreateBranchAndPRCreatesGitDataThenPullRequest(t *testing.T) {
 	}
 }
 
+// リモート push モデル: WorkDir 無しで ChangedContents（内容）から blob/commit/PR を作る。
+func TestGitHubCreateBranchAndPRFromChangedContents(t *testing.T) {
+	newGoMod := []byte("module example.com/x\n\nrequire github.com/foo/bar v1.3.0\n")
+	steps := []githubRequestStep{
+		{
+			method: http.MethodGet,
+			path:   "/repos/acme/demo/git/ref/heads/main",
+			write:  writeJSON(map[string]any{"object": map[string]any{"sha": "base-sha"}}),
+		},
+		{
+			method: http.MethodGet,
+			path:   "/repos/acme/demo/git/commits/base-sha",
+			write:  writeJSON(map[string]any{"sha": "base-sha", "tree": map[string]any{"sha": "base-tree"}}),
+		},
+		{
+			method: http.MethodPost,
+			path:   "/repos/acme/demo/git/blobs",
+			check: func(t *testing.T, body map[string]any) {
+				requireString(t, body, "encoding", "base64")
+				requireString(t, body, "content", base64.StdEncoding.EncodeToString(newGoMod))
+			},
+			write: writeJSON(map[string]any{"sha": "blob-gomod"}),
+		},
+		{
+			method: http.MethodPost,
+			path:   "/repos/acme/demo/git/trees",
+			check: func(t *testing.T, body map[string]any) {
+				tree, ok := body["tree"].([]any)
+				if !ok || len(tree) != 1 {
+					t.Fatalf("tree=%#v", body["tree"])
+				}
+				e := tree[0].(map[string]any)
+				if e["path"] != "go.mod" || e["sha"] != "blob-gomod" {
+					t.Fatalf("tree entry=%#v", e)
+				}
+			},
+			write: writeJSON(map[string]any{"sha": "new-tree"}),
+		},
+		{
+			method: http.MethodPost,
+			path:   "/repos/acme/demo/git/commits",
+			write:  writeJSON(map[string]any{"sha": "new-commit"}),
+		},
+		{
+			method: http.MethodPost,
+			path:   "/repos/acme/demo/git/refs",
+			write:  writeStatus(http.StatusOK, nil),
+		},
+		{
+			method: http.MethodPost,
+			path:   "/repos/acme/demo/pulls",
+			write:  writeJSON(map[string]any{"number": 7, "html_url": "https://github.com/acme/demo/pull/7"}),
+		},
+	}
+	ref, err := newTestGitHub(t, steps).CreateBranchAndPR(context.Background(), gateway.CreatePROptions{
+		Repository:      "acme/demo",
+		Base:            "main",
+		Branch:          "anneal/go/foo-bar",
+		Title:           "chore: bump github.com/foo/bar",
+		Body:            "body",
+		ChangedContents: map[string][]byte{"go.mod": newGoMod},
+	})
+	if err != nil {
+		t.Fatalf("CreateBranchAndPR: %v", err)
+	}
+	if ref.Number != 7 {
+		t.Fatalf("ref=%+v", ref)
+	}
+}
+
 func TestGitHubPushFixCreatesCommitAndForceUpdatesBranch(t *testing.T) {
 	workDir := t.TempDir()
 	writeFile(t, workDir, "fix.txt", "fixed")

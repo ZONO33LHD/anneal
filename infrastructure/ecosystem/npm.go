@@ -56,6 +56,21 @@ func (NPM) Scan(ctx context.Context, src gateway.ManifestSource) ([]gateway.Depe
 	return out, nil
 }
 
+// bumpPackageJSON は package.json の内容に対し、name のバージョンを target に
+// 書き換えた新しい内容と、置換が起きたかを返す（純粋関数・ディスク非依存）。
+// 置換で JSON が壊れる場合はエラーにする（同名キーの誤爆等に対する安全弁）。
+func bumpPackageJSON(data []byte, name, target string) ([]byte, bool, error) {
+	re := regexp.MustCompile(`("` + regexp.QuoteMeta(name) + `"\s*:\s*")([\^~]?)[^"]*(")`)
+	updated := re.ReplaceAll(data, []byte("${1}${2}"+target+"${3}"))
+	if string(updated) == string(data) {
+		return data, false, nil
+	}
+	if !json.Valid(updated) {
+		return nil, false, fmt.Errorf("npm: updating %s would produce invalid package.json", name)
+	}
+	return updated, true, nil
+}
+
 // ApplyUpdate は対象を絞った置換でバージョンを書き換えるため、ファイルの
 // フォーマットとキーの順序が保たれる。
 func (NPM) ApplyUpdate(repoPath, name, target string) ([]string, error) {
@@ -64,15 +79,12 @@ func (NPM) ApplyUpdate(repoPath, name, target string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	re := regexp.MustCompile(`("` + regexp.QuoteMeta(name) + `"\s*:\s*")([\^~]?)[^"]*(")`)
-	updated := re.ReplaceAll(data, []byte("${1}${2}"+target+"${3}"))
+	updated, changedFlag, err := bumpPackageJSON(data, name, target)
+	if err != nil {
+		return nil, err
+	}
 	var changed []string
-	if string(updated) != string(data) {
-		// 置換が JSON を壊していないことを書き込み前に検証する（同名キーが他箇所に
-		// あった場合などの破損を防ぐ安全弁）。
-		if !json.Valid(updated) {
-			return nil, fmt.Errorf("npm: updating %s would produce invalid package.json", name)
-		}
+	if changedFlag {
 		if err := os.WriteFile(pkgPath, updated, 0o644); err != nil {
 			return nil, err
 		}
@@ -83,6 +95,24 @@ func (NPM) ApplyUpdate(repoPath, name, target string) ([]string, error) {
 		changed = append(changed, "package-lock.json")
 	}
 	return changed, nil
+}
+
+// ApplyUpdateContent は ManifestSource から package.json を読み、メモリ上で
+// バージョンを更新して「相対パス→更新後の内容」を返す（ローカル checkout 不要）。
+// package-lock.json は再生成に npm が要るためここでは扱わない。
+func (NPM) ApplyUpdateContent(ctx context.Context, src gateway.ManifestSource, name, target string) (map[string][]byte, error) {
+	data, err := src.ReadFile(ctx, "package.json")
+	if err != nil {
+		return nil, err
+	}
+	updated, changedFlag, err := bumpPackageJSON(data, name, target)
+	if err != nil {
+		return nil, err
+	}
+	if !changedFlag {
+		return map[string][]byte{}, nil
+	}
+	return map[string][]byte{"package.json": updated}, nil
 }
 
 func fileExists(p string) bool {

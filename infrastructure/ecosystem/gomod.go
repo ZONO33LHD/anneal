@@ -60,12 +60,9 @@ func (GoMod) Scan(ctx context.Context, src gateway.ManifestSource) ([]gateway.De
 	return out, nil
 }
 
-func (GoMod) ApplyUpdate(repoPath, name, target string) ([]string, error) {
-	modPath := filepath.Join(repoPath, "go.mod")
-	data, err := os.ReadFile(modPath)
-	if err != nil {
-		return nil, err
-	}
+// bumpGoMod は go.mod の内容に対し、name の require 行のバージョンを target に
+// 書き換えた新しい内容と、置換が起きたかを返す（純粋関数・ディスク非依存）。
+func bumpGoMod(data []byte, name, target string) ([]byte, bool) {
 	if !strings.HasPrefix(target, "v") {
 		target = "v" + target
 	}
@@ -83,9 +80,19 @@ func (GoMod) ApplyUpdate(repoPath, name, target string) ([]string, error) {
 			}
 		}
 	}
+	return []byte(strings.Join(lines, "\n")), updated
+}
+
+func (GoMod) ApplyUpdate(repoPath, name, target string) ([]string, error) {
+	modPath := filepath.Join(repoPath, "go.mod")
+	data, err := os.ReadFile(modPath)
+	if err != nil {
+		return nil, err
+	}
+	out, updated := bumpGoMod(data, name, target)
 	var changed []string
 	if updated {
-		if err := os.WriteFile(modPath, []byte(strings.Join(lines, "\n")), 0o644); err != nil {
+		if err := os.WriteFile(modPath, out, 0o644); err != nil {
 			return nil, err
 		}
 		changed = append(changed, "go.mod")
@@ -94,4 +101,20 @@ func (GoMod) ApplyUpdate(repoPath, name, target string) ([]string, error) {
 		}
 	}
 	return changed, nil
+}
+
+// ApplyUpdateContent は ManifestSource から go.mod を読み、メモリ上でバージョンを
+// 更新して「相対パス→更新後の内容」を返す（ローカル checkout 不要）。
+// go.sum は再生成にツールチェインが要るためここでは扱わない（go.mod のみ更新し、
+// go.sum の整合は CI/自己修復に委ねる）。
+func (GoMod) ApplyUpdateContent(ctx context.Context, src gateway.ManifestSource, name, target string) (map[string][]byte, error) {
+	data, err := src.ReadFile(ctx, "go.mod")
+	if err != nil {
+		return nil, err
+	}
+	out, updated := bumpGoMod(data, name, target)
+	if !updated {
+		return map[string][]byte{}, nil
+	}
+	return map[string][]byte{"go.mod": out}, nil
 }

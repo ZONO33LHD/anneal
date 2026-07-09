@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"github.com/ZONO33LHD/anneal/domain/gateway"
 	"github.com/ZONO33LHD/anneal/domain/model"
@@ -24,12 +25,29 @@ func (e *engine) analyzeStep(ctx context.Context, rec model.DependencyUpdate) (m
 // createPRStep: pr_creating -> pr_created（バージョン更新の適用、PR の作成とオープン）。
 func (e *engine) createPRStep(ctx context.Context, rec model.DependencyUpdate) (model.DependencyUpdate, error) {
 	var changed []string
-	if eco := e.ecosystems.ByID(rec.Ecosystem); eco != nil && rec.RepoPath != "" {
-		c, err := eco.ApplyUpdate(rec.RepoPath, rec.PackageName, rec.TargetVersion)
-		if err != nil {
-			return rec, err
+	var contents map[string][]byte
+	if eco := e.ecosystems.ByID(rec.Ecosystem); eco != nil {
+		switch {
+		case rec.RepoPath != "":
+			// ローカル checkout あり: ディスク上のマニフェストを書き換える。
+			c, err := eco.ApplyUpdate(rec.RepoPath, rec.PackageName, rec.TargetVersion)
+			if err != nil {
+				return rec, err
+			}
+			changed = c
+		case e.manifests != nil && rec.Repository != "":
+			// ローカル checkout なし（リモート push モデル）: Contents API から読み、
+			// メモリ上で更新して内容ベースで PR を作る。
+			m, err := eco.ApplyUpdateContent(ctx, e.manifests(rec.Repository), rec.PackageName, rec.TargetVersion)
+			if err != nil {
+				return rec, err
+			}
+			contents = m
+			for p := range m {
+				changed = append(changed, p)
+			}
+			sort.Strings(changed)
 		}
-		changed = c
 	}
 	title, body, branch := e.composePR(ctx, rec, changed)
 	base := rec.BaseBranch
@@ -37,13 +55,14 @@ func (e *engine) createPRStep(ctx context.Context, rec model.DependencyUpdate) (
 		base = "main"
 	}
 	ref, err := e.git.CreateBranchAndPR(ctx, gateway.CreatePROptions{
-		Repository:   rec.Repository,
-		WorkDir:      rec.RepoPath,
-		Base:         base,
-		Branch:       branch,
-		Title:        title,
-		Body:         body,
-		ChangedFiles: changed,
+		Repository:      rec.Repository,
+		WorkDir:         rec.RepoPath,
+		Base:            base,
+		Branch:          branch,
+		Title:           title,
+		Body:            body,
+		ChangedFiles:    changed,
+		ChangedContents: contents,
 	})
 	if err != nil {
 		return rec, err

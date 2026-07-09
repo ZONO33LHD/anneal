@@ -65,6 +65,7 @@ func TestEngineWaitsWhenCIPending(t *testing.T) {
 		pendingGit{},
 		nil,
 		nil,
+		nil, // manifests (ManifestSourceFactory)
 		nil,
 		noopLogger{},
 		90,

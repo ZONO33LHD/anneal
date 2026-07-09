@@ -23,6 +23,11 @@ type Ecosystem interface {
 	Detect(ctx context.Context, src ManifestSource) (bool, error)
 	Scan(ctx context.Context, src ManifestSource) ([]Dependency, error)
 	ApplyUpdate(repoPath, name, target string) ([]string, error)
+	// ApplyUpdateContent は ManifestSource からマニフェストを読み、メモリ上で
+	// バージョンを更新して「相対パス→更新後の内容」を返す。ローカル checkout が
+	// 無い環境（Cloud Run のリモート push モデル）で PR を作るために使う。
+	// 更新対象が無ければ空 map を返す。
+	ApplyUpdateContent(ctx context.Context, src ManifestSource, name, target string) (map[string][]byte, error)
 }
 
 // EcosystemProvider はリポジトリに該当するエコシステムを発見する。
