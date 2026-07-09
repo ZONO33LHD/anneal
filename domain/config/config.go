@@ -31,6 +31,10 @@ type Config struct {
 	GitHubToken         string
 	GitHubWebhookSecret string
 	SlackWebhookURL     string
+	// ContentsToken は リモート scan（Contents API 読み取り）専用のトークン。
+	// 最小権限（NF-002）のため PR 作成用の GitHubToken とは分けて指定できる。
+	// 空なら registry が GitHubToken にフォールバックする。
+	ContentsToken string
 
 	// ForceMock はすべてのプロバイダをモック/オフライン形態に強制する（デモで使用）。
 	ForceMock bool
@@ -64,6 +68,7 @@ func Load() (*Config, error) {
 		GeminiAPIKey:              os.Getenv("GEMINI_API_KEY"),
 		GeminiModel:               envOr("ANNEAL_LLM_MODEL", "gemini-2.5-flash-lite"),
 		GitHubToken:               os.Getenv("GITHUB_TOKEN"),
+		ContentsToken:             os.Getenv("ANNEAL_CONTENTS_TOKEN"),
 		GitHubWebhookSecret:       os.Getenv("GITHUB_WEBHOOK_SECRET"),
 		SlackWebhookURL:           os.Getenv("SLACK_WEBHOOK_URL"),
 		Verbose:                   os.Getenv("ANNEAL_DEBUG") == "1",
