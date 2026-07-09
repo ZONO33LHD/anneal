@@ -95,8 +95,16 @@ func New(cfg *config.Config) (*Registry, error) {
 	prompts := prompt.NewRepoCatalog(improvements)
 	engine := usecase.NewEngineUsecase(updates, evals, improvements, llmGW, prompts, gitGW, notifier, ecosystems, scanner, logger, cfg.LowScoreThreshold, simulate)
 
+	// リモート scan（owner/repo 起点）は GitHub Contents API でマニフェスト/.anneal.yml を
+	// 取得する。ローカル checkout を持たない Cloud Run 経路で使う。
+	remoteSource := func(repoRef string) gateway.ManifestSource {
+		owner, repo, _ := strings.Cut(repoRef, "/")
+		return git.NewContentsSource(cfg.GitHubToken, owner, repo, "")
+	}
+	remoteCfg := repoconfig.NewRemoteLoader(remoteSource)
+
 	return &Registry{
-		Scan:         usecase.NewScanUsecase(updates, improvements, meta, ecosystems, repoCfg, notifier, logger, ecosystem.NewLocalFS),
+		Scan:         usecase.NewScanUsecase(updates, improvements, meta, ecosystems, repoCfg, notifier, logger, ecosystem.NewLocalFS, remoteSource, remoteCfg),
 		Engine:       engine,
 		Anneal:       usecase.NewAnnealUsecase(evals, improvements, llmGW, notifier, logger, cfg.ImproveWindow, cfg.LowScoreThreshold),
 		Adoption:     usecase.NewAdoptionUsecase(evals, improvements, notifier, logger, policy.MinCanarySample, policy.CanaryRegressionMargin),

@@ -136,6 +136,15 @@ func (f *fakeInternalTaskScan) Run(ctx context.Context, repoArg, repository stri
 	return f.results[f.calls-1], nil
 }
 
+func (f *fakeInternalTaskScan) RunRemote(ctx context.Context, repository string) (usecase.ScanResult, error) {
+	f.calls++
+	f.args = append(f.args, "remote="+repository)
+	if len(f.results) < f.calls {
+		return usecase.ScanResult{}, nil
+	}
+	return f.results[f.calls-1], nil
+}
+
 type fakeInternalTaskEngine struct {
 	tickCalls   int
 	tickChanged int

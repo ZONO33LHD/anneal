@@ -23,7 +23,11 @@ type ScanResult struct {
 
 // ScanUsecase はアップグレード候補を見つけ、detected レコードを作成する。
 type ScanUsecase interface {
+	// Run はローカルパスのリポジトリをスキャンする（CLI・demo）。
 	Run(ctx context.Context, repoArg, repository string) (ScanResult, error)
+	// RunRemote は owner/repo からリモート（Contents API 等）でスキャンする
+	// （Cloud Run・push モデル）。
+	RunRemote(ctx context.Context, repository string) (ScanResult, error)
 }
 
 type scanUsecase struct {
@@ -34,9 +38,12 @@ type scanUsecase struct {
 	repoConfig   gateway.RepoConfigLoader
 	notifier     gateway.Notifier
 	log          gateway.Logger
-	// newSource は repoPath から ManifestSource を作る。registry が LocalFS を注入する
-	// （usecase 層が具体実装を知らずに済ませ、後続 PR で Contents API へ差し替え可能に）。
+	// newSource は repoPath から ManifestSource を作る（ローカル scan 用・LocalFS）。
 	newSource gateway.ManifestSourceFactory
+	// remoteSource は owner/repo から ManifestSource を作る（リモート scan 用・Contents API）。
+	remoteSource gateway.ManifestSourceFactory
+	// remoteConfig は owner/repo から .anneal.yml を読む（リモート scan 用）。
+	remoteConfig gateway.RepoConfigLoader
 }
 
 // NewScanUsecase は scan ユースケースを組み立てる。
@@ -49,8 +56,10 @@ func NewScanUsecase(
 	notifier gateway.Notifier,
 	log gateway.Logger,
 	newSource gateway.ManifestSourceFactory,
+	remoteSource gateway.ManifestSourceFactory,
+	remoteConfig gateway.RepoConfigLoader,
 ) ScanUsecase {
-	return &scanUsecase{updates, improvements, metadata, ecosystems, repoConfig, notifier, log, newSource}
+	return &scanUsecase{updates, improvements, metadata, ecosystems, repoConfig, notifier, log, newSource, remoteSource, remoteConfig}
 }
 
 // activeVersion は現在有効なエージェント版を返す。採用済み/試用中の改善があれば
@@ -63,8 +72,9 @@ func (s *scanUsecase) activeVersion() string {
 	return model.ActiveAgentVersion(improvements)
 }
 
-// Run はリポジトリをスキャンし、detected レコードを冪等に作成する。重複防止:
-// 既存のアクティブなレコードを持つ update_key はスキップされる。
+// Run はローカルパスのリポジトリをスキャンし、detected レコードを冪等に作成する
+// （開発・CLI・demo 向け）。重複防止: 既存のアクティブなレコードを持つ update_key は
+// スキップされる。
 func (s *scanUsecase) Run(ctx context.Context, repoArg, repoName string) (ScanResult, error) {
 	repoPath, _ := filepath.Abs(repoArg)
 	if repoName == "" {
@@ -72,12 +82,30 @@ func (s *scanUsecase) Run(ctx context.Context, repoArg, repoName string) (ScanRe
 	}
 	cfg := s.repoConfig.Load(repoPath)
 	src := s.newSource(repoPath)
+	return s.scanWith(ctx, cfg, repoName, repoPath, src)
+}
+
+// RunRemote は owner/repo だけを起点に、ローカル checkout 無しでスキャンする
+// （Cloud Run・対象 repo 起点 push モデル向け）。マニフェストと .anneal.yml は
+// リモート（Contents API 等）から取得する。RepoPath は空になる。
+func (s *scanUsecase) RunRemote(ctx context.Context, repoRef string) (ScanResult, error) {
+	if repoRef == "" {
+		return ScanResult{}, fmt.Errorf("scan: repository (owner/repo) is required")
+	}
+	cfg := s.remoteConfig.Load(repoRef)
+	src := s.remoteSource(repoRef)
+	return s.scanWith(ctx, cfg, repoRef, "", src)
+}
+
+// scanWith は解決済みの設定・ManifestSource を使ってスキャン本体を実行する。
+// ローカル/リモート双方の入口（Run/RunRemote）が共有する。
+func (s *scanUsecase) scanWith(ctx context.Context, cfg model.RepoConfig, repoName, repoPath string, src gateway.ManifestSource) (ScanResult, error) {
 	ecos, err := s.ecosystems.ForRepo(ctx, src)
 	if err != nil {
 		return ScanResult{}, err
 	}
 	if len(ecos) == 0 {
-		s.log.Warn(ctx, "no supported manifest found", "repo", repoPath)
+		s.log.Warn(ctx, "no supported manifest found", "repo", repoName)
 		return ScanResult{}, nil
 	}
 
