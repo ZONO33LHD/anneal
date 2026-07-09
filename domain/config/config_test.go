@@ -87,3 +87,15 @@ func TestLoadInternalTaskConfig(t *testing.T) {
 		t.Fatalf("target[1] = %#v", cfg.ScanTargets[1])
 	}
 }
+
+// リモート scan 用の Contents トークンは PR 作成用と分けて指定できる（最小権限）。
+func TestLoadContentsToken(t *testing.T) {
+	t.Setenv("ANNEAL_CONTENTS_TOKEN", "contents-ro")
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.ContentsToken != "contents-ro" {
+		t.Fatalf("contents token = %q, want contents-ro", cfg.ContentsToken)
+	}
+}

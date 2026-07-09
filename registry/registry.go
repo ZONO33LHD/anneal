@@ -96,10 +96,16 @@ func New(cfg *config.Config) (*Registry, error) {
 	engine := usecase.NewEngineUsecase(updates, evals, improvements, llmGW, prompts, gitGW, notifier, ecosystems, scanner, logger, cfg.LowScoreThreshold, simulate)
 
 	// リモート scan（owner/repo 起点）は GitHub Contents API でマニフェスト/.anneal.yml を
-	// 取得する。ローカル checkout を持たない Cloud Run 経路で使う。
+	// 取得する。ローカル checkout を持たない Cloud Run 経路で使う。読み取り専用の
+	// ContentsToken を最小権限で使い、未指定なら PR 作成用の GitHubToken にフォールバック
+	// する（public repo は空でも可）。
+	contentsToken := cfg.ContentsToken
+	if contentsToken == "" {
+		contentsToken = cfg.GitHubToken
+	}
 	remoteSource := func(repoRef string) gateway.ManifestSource {
 		owner, repo, _ := strings.Cut(repoRef, "/")
-		return git.NewContentsSource(cfg.GitHubToken, owner, repo, "")
+		return git.NewContentsSource(contentsToken, owner, repo, "")
 	}
 	remoteCfg := repoconfig.NewRemoteLoader(remoteSource)
 
