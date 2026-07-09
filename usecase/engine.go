@@ -30,8 +30,12 @@ type engine struct {
 	git          gateway.Git
 	notifier     gateway.Notifier
 	ecosystems   gateway.EcosystemProvider
-	scanner      gateway.SourceScanner
-	log          gateway.Logger
+	// manifests はローカル checkout が無い環境（リモート push モデル）で、PR 作成時に
+	// マニフェストを Contents API から読むための ManifestSource を owner/repo から作る。
+	// nil のときはリモート content 経由の PR 作成を行わない（ローカルパス経路のみ）。
+	manifests gateway.ManifestSourceFactory
+	scanner   gateway.SourceScanner
+	log       gateway.Logger
 
 	lowScoreThreshold float64
 	// simulate は人間承認ゲートと CI を自動で進める（モックモード）。これにより
@@ -50,12 +54,13 @@ func NewEngineUsecase(
 	git gateway.Git,
 	notifier gateway.Notifier,
 	ecosystems gateway.EcosystemProvider,
+	manifests gateway.ManifestSourceFactory,
 	scanner gateway.SourceScanner,
 	log gateway.Logger,
 	lowScoreThreshold float64,
 	simulate bool,
 ) EngineUsecase {
-	return &engine{updates, evals, improvements, llm, prompts, git, notifier, ecosystems, scanner, log, lowScoreThreshold, simulate}
+	return &engine{updates, evals, improvements, llm, prompts, git, notifier, ecosystems, manifests, scanner, log, lowScoreThreshold, simulate}
 }
 
 var scoreStates = map[model.State]bool{

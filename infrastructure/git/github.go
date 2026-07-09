@@ -11,6 +11,7 @@ import (
 	neturl "net/url"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -203,6 +204,16 @@ func (g *GitHub) createBlob(ctx context.Context, owner, repo, workDir, file stri
 	if err != nil {
 		return "", "", err
 	}
+	sha, err := g.createBlobFromContent(ctx, owner, repo, data)
+	if err != nil {
+		return "", "", fmt.Errorf("github: blob for %s: %w", repoPath, err)
+	}
+	return repoPath, sha, nil
+}
+
+// createBlobFromContent は与えられたバイト列から blob を作り SHA を返す
+// （ディスク非依存・リモート push モデル用）。
+func (g *GitHub) createBlobFromContent(ctx context.Context, owner, repo string, data []byte) (string, error) {
 	body := map[string]string{
 		"content":  base64.StdEncoding.EncodeToString(data),
 		"encoding": "base64",
@@ -210,12 +221,12 @@ func (g *GitHub) createBlob(ctx context.Context, owner, repo, workDir, file stri
 	var out githubBlobResponse
 	url := g.endpoint("repos", owner, repo, "git", "blobs")
 	if err := g.do(ctx, http.MethodPost, url, body, &out); err != nil {
-		return "", "", err
+		return "", err
 	}
 	if out.SHA == "" {
-		return "", "", fmt.Errorf("github: blob for %s did not return sha", repoPath)
+		return "", fmt.Errorf("github: blob did not return sha")
 	}
-	return repoPath, out.SHA, nil
+	return out.SHA, nil
 }
 
 func (g *GitHub) createCommitFromWorktree(
@@ -226,9 +237,10 @@ func (g *GitHub) createCommitFromWorktree(
 	baseTreeSHA string,
 	workDir string,
 	changedFiles []string,
+	changedContents map[string][]byte,
 	message string,
 ) (string, error) {
-	if len(changedFiles) == 0 {
+	if len(changedFiles) == 0 && len(changedContents) == 0 {
 		return "", fmt.Errorf("github: changed_files is required")
 	}
 	if message == "" {
@@ -241,18 +253,41 @@ func (g *GitHub) createCommitFromWorktree(
 		Type string `json:"type"`
 		SHA  string `json:"sha"`
 	}
-	entries := make([]treeEntry, 0, len(changedFiles))
-	for _, file := range changedFiles {
-		repoPath, blobSHA, err := g.createBlob(ctx, owner, repo, workDir, file)
-		if err != nil {
-			return "", err
+	var entries []treeEntry
+	if len(changedContents) > 0 {
+		// 内容ベース（ローカル checkout 無しのリモート push モデル）。
+		// 決定的な順序のため path をソートしてから blob を作る。
+		paths := make([]string, 0, len(changedContents))
+		for p := range changedContents {
+			paths = append(paths, p)
 		}
-		entries = append(entries, treeEntry{
-			Path: repoPath,
-			Mode: "100644",
-			Type: "blob",
-			SHA:  blobSHA,
-		})
+		sort.Strings(paths)
+		entries = make([]treeEntry, 0, len(paths))
+		for _, p := range paths {
+			repoPath, err := normalizeChangedPath(p)
+			if err != nil {
+				return "", err
+			}
+			blobSHA, err := g.createBlobFromContent(ctx, owner, repo, changedContents[p])
+			if err != nil {
+				return "", fmt.Errorf("github: blob for %s: %w", repoPath, err)
+			}
+			entries = append(entries, treeEntry{Path: repoPath, Mode: "100644", Type: "blob", SHA: blobSHA})
+		}
+	} else {
+		entries = make([]treeEntry, 0, len(changedFiles))
+		for _, file := range changedFiles {
+			repoPath, blobSHA, err := g.createBlob(ctx, owner, repo, workDir, file)
+			if err != nil {
+				return "", err
+			}
+			entries = append(entries, treeEntry{
+				Path: repoPath,
+				Mode: "100644",
+				Type: "blob",
+				SHA:  blobSHA,
+			})
+		}
 	}
 
 	var tree githubTreeResponse
@@ -336,6 +371,7 @@ func (g *GitHub) CreateBranchAndPR(ctx context.Context, opts gateway.CreatePROpt
 		baseTreeSHA,
 		opts.WorkDir,
 		opts.ChangedFiles,
+		opts.ChangedContents,
 		opts.Title,
 	)
 	if err != nil {
@@ -380,6 +416,7 @@ func (g *GitHub) PushFix(ctx context.Context, opts gateway.PushFixOptions) error
 		baseTreeSHA,
 		opts.WorkDir,
 		opts.ChangedFiles,
+		nil,
 		opts.Message,
 	)
 	if err != nil {

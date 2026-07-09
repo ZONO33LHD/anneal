@@ -11,6 +11,10 @@ type CreatePROptions struct {
 	Title        string   `json:"title"`
 	Body         string   `json:"body"`
 	ChangedFiles []string `json:"changed_files"`
+	// ChangedContents は「相対パス→更新後の内容」。ローカル checkout が無い
+	// リモート push モデルで使い、ディスクではなく内容から blob/commit を作る。
+	// 非空ならこちらが優先され、ChangedFiles/WorkDir のディスク読取りは行わない。
+	ChangedContents map[string][]byte `json:"-"`
 }
 
 // PushFixOptions は後続の修正コミットを記述する。
