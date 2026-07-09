@@ -20,11 +20,18 @@ func NewLoader() gateway.RepoConfigLoader {
 
 // Load は .anneal.yml を読み込み、なければデフォルトにフォールバックする（ファイルが無くても問題ない）。
 func (Loader) Load(repoPath string) model.RepoConfig {
-	cfg := model.DefaultRepoConfig()
 	data, err := os.ReadFile(filepath.Join(repoPath, ".anneal.yml"))
 	if err != nil {
-		return cfg
+		return model.DefaultRepoConfig()
 	}
+	return parseRepoConfig(data)
+}
+
+// parseRepoConfig は .anneal.yml のバイト列を RepoConfig にする。パース失敗時は
+// デフォルトへフォールバックする（壊れた設定でパイプラインを止めない）。ローカル /
+// リモート双方の Loader で共有する。
+func parseRepoConfig(data []byte) model.RepoConfig {
+	cfg := model.DefaultRepoConfig()
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return model.DefaultRepoConfig()
 	}
