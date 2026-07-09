@@ -7,6 +7,9 @@ resource "google_secret_manager_secret" "app" {
     "GITHUB_WEBHOOK_SECRET",
     "GEMINI_API_KEY",
     "SLACK_WEBHOOK_URL",
+    # 内部 endpoint(/internal/*) の共有トークン。対象 repo の anneal.yml が
+    # X-Anneal-Internal-Token として送る値と一致させる（ANNEAL_INTERNAL_TOKEN）。
+    "ANNEAL_INTERNAL_TOKEN",
   ])
 
   secret_id = each.value
