@@ -3,7 +3,7 @@ module github.com/ZONO33LHD/anneal
 go 1.26.4
 
 require (
-	cloud.google.com/go/firestore v1.22.0
+	cloud.google.com/go/firestore v1.23.0
 	google.golang.org/api v0.278.0
 	google.golang.org/grpc v1.81.0
 	gopkg.in/yaml.v3 v3.0.1
