@@ -57,6 +57,8 @@ Webhook 無しでも「定期 `scan` + `tick`」で運用できます。
 
 ### 3. 本番（GCP / Cloud Run・イベント駆動）
 
+> **注（2026-09-11〜）**: コスト削減のため GitHub Actions の CI/CD と Terraform の自動 plan/apply は停止中です（ワークフローは `.github/workflows-disabled/` に退避）。以下は再有効化した場合の手順です。
+
 1. Terraform で `api → artifactregistry → firestore → secretmanager → iam → cloudrun` を apply（[`terraform/README.md`](terraform/README.md)）し、secret 値を投入。
 2. `main` への push で `image-build` ワークフローがイメージを Artifact Registry へ push し、Cloud Run へ deploy。
 3. Cloud Run は `ANNEAL_STORE_BACKEND=firestore` で `serve` を起動。GitHub の Webhook を `https://<cloud-run-url>/webhooks/github` に設定（`check_suite` / `pull_request_review` / `pull_request`）すると、イベントで状態機械が進みます（署名は `GITHUB_WEBHOOK_SECRET` で検証）。
@@ -150,7 +152,7 @@ go vet ./...
 - **Firestore 永続化**（`ANNEAL_STORE_BACKEND` で切替）
 - **A/B 採用・カナリア・ロールバック**（`adopt` / `tick`）
 - **ステータスダッシュボード**（`serve` の `/`）
-- **GCP 本番 IaC**（Terraform: API/Artifact Registry/Firestore/Secret/IAM/Cloud Run）＋ コンテナイメージの build/push/deploy（GitHub Actions）
+- **GCP 本番 IaC**（Terraform: API/Artifact Registry/Firestore/Secret/IAM/Cloud Run）＋ コンテナイメージの build/push/deploy（GitHub Actions） — CI/CD と自動 apply は 2026-09-11 にコスト削減のため停止中（`.github/workflows-disabled/`）
 
 ## スコープ外（将来）
 
