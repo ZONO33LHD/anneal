@@ -1,5 +1,10 @@
 # Terraform
 
+> **停止中（2026-09-11〜）**: コスト削減のため、GitHub Actions による自動 `plan` / `apply`（`terraform-plan` / `terraform-apply`）は無効化しています。
+> ワークフロー本体は `.github/workflows-disabled/` に退避済みです。このディレクトリの `.tf` はインフラ構成の記録として残していますが、
+> `main` への merge で apply されることはありません。必要になった場合はローカルから手動で `make terraform-init` → `terraform plan` を実行するか、
+> `.github/workflows-disabled/README.md` の手順でワークフローを戻してください。
+
 Anneal の Terraform は、PR で `plan`、`main` への merge で `apply` します。後続リソースは `terraform/path-filter/anneal.yml` の記述順に追加します。
 
 ## モジュール構成（apply 順）
